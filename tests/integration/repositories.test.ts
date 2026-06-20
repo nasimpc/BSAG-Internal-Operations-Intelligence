@@ -64,6 +64,7 @@ function buildNotice(
     title: 'Line 1 diversion',
     summary: 'Line 1 diverts via test stop',
     lines: ['1', '1E'],
+    stop_names: ['Test Stop'],
     severity: 'warning',
     provenance: {
       source: 'bsag',

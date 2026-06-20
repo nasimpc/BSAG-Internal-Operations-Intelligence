@@ -103,6 +103,15 @@ export const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    id: '003_service_notice_stops',
+    apply(database) {
+      database.exec(`
+        ALTER TABLE service_notices
+          ADD COLUMN stop_names_json TEXT NOT NULL DEFAULT '[]';
+      `);
+    },
+  },
 ];
 
 export function applyMigrations(database: Database.Database): void {

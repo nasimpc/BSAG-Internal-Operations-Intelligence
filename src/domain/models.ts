@@ -37,6 +37,7 @@ export interface ServiceNotice {
   summary: string;
   details?: string;
   lines: string[];
+  stop_names: string[];
   valid_from?: string;
   valid_to?: string;
   severity: 'info' | 'warning' | 'critical';

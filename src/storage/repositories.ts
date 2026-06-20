@@ -55,6 +55,7 @@ const serviceNoticeSchema = z.object({
   summary: z.string().min(1),
   details: z.string().min(1).optional(),
   lines: z.array(z.string().min(1)),
+  stop_names: z.array(z.string().min(1)),
   valid_from: z.string().min(1).optional(),
   valid_to: z.string().min(1).optional(),
   severity: z.enum(['info', 'warning', 'critical']),
@@ -109,6 +110,7 @@ interface ServiceNoticeRow {
   summary: string;
   details: string | null;
   linesJson: string;
+  stopNamesJson: string;
   validFrom: string | null;
   validTo: string | null;
   severity: ServiceNotice['severity'];
@@ -514,6 +516,7 @@ class SqliteServiceNoticeRepository implements ServiceNoticeRepository {
         string,
         string | null,
         string,
+        string,
         string | null,
         string | null,
         ServiceNotice['severity'],
@@ -529,6 +532,7 @@ class SqliteServiceNoticeRepository implements ServiceNoticeRepository {
          summary,
          details,
          lines_json,
+         stop_names_json,
          valid_from,
          valid_to,
          severity,
@@ -536,12 +540,13 @@ class SqliteServiceNoticeRepository implements ServiceNoticeRepository {
          content_hash,
          fetched_at
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(source, id) DO UPDATE SET
          title = excluded.title,
          summary = excluded.summary,
          details = excluded.details,
          lines_json = excluded.lines_json,
+         stop_names_json = excluded.stop_names_json,
          valid_from = excluded.valid_from,
          valid_to = excluded.valid_to,
          severity = excluded.severity,
@@ -556,6 +561,7 @@ class SqliteServiceNoticeRepository implements ServiceNoticeRepository {
          summary,
          details,
          lines_json AS linesJson,
+         stop_names_json AS stopNamesJson,
          valid_from AS validFrom,
          valid_to AS validTo,
          severity,
@@ -575,6 +581,7 @@ class SqliteServiceNoticeRepository implements ServiceNoticeRepository {
             notice.summary,
             notice.details ?? null,
             serializeJson(z.array(z.string().min(1)), notice.lines),
+            serializeJson(z.array(z.string().min(1)), notice.stop_names),
             notice.valid_from ?? null,
             notice.valid_to ?? null,
             notice.severity,
@@ -853,6 +860,7 @@ function normalizeServiceNotice(
     summary: value.summary,
     ...(value.details === undefined ? {} : { details: value.details }),
     lines: value.lines,
+    stop_names: value.stop_names,
     ...(value.valid_from === undefined ? {} : { valid_from: value.valid_from }),
     ...(value.valid_to === undefined ? {} : { valid_to: value.valid_to }),
     severity: value.severity,
@@ -907,6 +915,7 @@ function toServiceNotice(row: ServiceNoticeRow): ServiceNotice {
       summary: row.summary,
       ...(row.details === null ? {} : { details: row.details }),
       lines: parseJson(z.array(z.string().min(1)), row.linesJson),
+      stop_names: parseJson(z.array(z.string().min(1)), row.stopNamesJson),
       ...(row.validFrom === null ? {} : { valid_from: row.validFrom }),
       ...(row.validTo === null ? {} : { valid_to: row.validTo }),
       severity: row.severity,
