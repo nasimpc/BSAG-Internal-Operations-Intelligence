@@ -1,12 +1,17 @@
 import { createServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = '/home/nasimpcm/Desktop/BSAG-MCP/.worktrees/bsag-briefing-server';
+const CORRIDORS_PATH = fileURLToPath(
+  new URL('../../config/corridors.json', import.meta.url),
+);
 
 const FIXTURES = {
   '/vbn-realtime.json': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/vbn-realtime.json')),
+    body: readFileSync(
+      new URL('../fixtures/vbn-realtime.json', import.meta.url),
+    ),
     contentType: 'application/json',
   },
   '/vbn-realtime.bin': {
@@ -14,31 +19,41 @@ const FIXTURES = {
     contentType: 'application/octet-stream',
   },
   '/vbn-notices': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/vbn-notices.html')),
+    body: readFileSync(
+      new URL('../fixtures/vbn-notices.html', import.meta.url),
+    ),
     contentType: 'text/html',
   },
   '/bsag-news': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/bsag-news.html')),
+    body: readFileSync(new URL('../fixtures/bsag-news.html', import.meta.url)),
     contentType: 'text/html',
   },
   '/vmz/current': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/vmz-roadworks.html')),
+    body: readFileSync(
+      new URL('../fixtures/vmz-roadworks.html', import.meta.url),
+    ),
     contentType: 'text/html',
   },
   '/vmz/preview': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/vmz-roadworks.html')),
+    body: readFileSync(
+      new URL('../fixtures/vmz-roadworks.html', import.meta.url),
+    ),
     contentType: 'text/html',
   },
   '/vmz/overview': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/vmz-roadworks.html')),
+    body: readFileSync(
+      new URL('../fixtures/vmz-roadworks.html', import.meta.url),
+    ),
     contentType: 'text/html',
   },
   '/vmz/feed.rss': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/vmz-feed.xml')),
+    body: readFileSync(new URL('../fixtures/vmz-feed.xml', import.meta.url)),
     contentType: 'application/rss+xml',
   },
   '/bremen-events': {
-    body: readFileSync(resolve(ROOT, 'tests/fixtures/bremen-events.html')),
+    body: readFileSync(
+      new URL('../fixtures/bremen-events.html', import.meta.url),
+    ),
     contentType: 'text/html',
   },
   '/media/verkehr/baustellenpresse/baustellenpresse_kw25.pdf': {
@@ -91,13 +106,15 @@ export async function startFixtureServer(): Promise<FixtureServer> {
 export function buildTestEnv(
   baseUrl: string,
   dataPath: string,
+  options: {
+    includeCorridorsPath?: boolean;
+  } = {},
 ): Record<string, string> {
-  return {
+  const env: Record<string, string> = {
     TZ: 'Europe/Berlin',
     HTTP_HOST: '127.0.0.1',
     BSAG_MCP_DATA_DIR: dirname(dataPath),
     DATA_PATH: dataPath,
-    CORRIDORS_PATH: resolve(ROOT, 'config/corridors.json'),
     VBN_REALTIME_JSON_URL: `${baseUrl}/vbn-realtime.json`,
     VBN_REALTIME_PROTOBUF_URL: `${baseUrl}/vbn-realtime.bin`,
     VBN_NOTICES_URL: `${baseUrl}/vbn-notices`,
@@ -108,6 +125,12 @@ export function buildTestEnv(
     VMZ_RSS_URL: `${baseUrl}/vmz/feed.rss`,
     BREMEN_EVENTS_URL: `${baseUrl}/bremen-events`,
   };
+
+  if (options.includeCorridorsPath !== false) {
+    env.CORRIDORS_PATH = resolve(CORRIDORS_PATH);
+  }
+
+  return env;
 }
 
 async function listen(server: Server): Promise<void> {

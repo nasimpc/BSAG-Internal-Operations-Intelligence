@@ -143,6 +143,16 @@ async function reportOutcome(
 }
 
 function toWarningCode(error: unknown): string {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string' &&
+    error.code.length > 0
+  ) {
+    return error.code;
+  }
+
   if (error instanceof Error && error.name.length > 0) {
     return error.name;
   }

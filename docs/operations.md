@@ -13,7 +13,7 @@ Both modes use the same SQLite database and the same five MCP tools.
 
 - loopback HTTP can run without bearer auth
 - non-loopback HTTP requires `HTTP_BEARER_TOKEN`
-- origin-bearing requests are filtered against the configured host and `HTTP_ALLOWED_ORIGINS`
+- origin-bearing requests are filtered against exact configured origins or allowed hostnames
 - only `/data` should be writable in container deployments
 
 ## Data layout
@@ -28,19 +28,19 @@ Local stdio:
 
 ```bash
 npm run build
-node dist/transports/stdio.js
+node --env-file=.env dist/transports/stdio.js
 ```
 
 Hosted HTTP on loopback:
 
 ```bash
-HTTP_HOST=127.0.0.1 HTTP_PORT=3000 node dist/transports/http.js
+node --env-file=.env dist/transports/http.js
 ```
 
 Hosted HTTP behind a reverse proxy:
 
 ```bash
-HTTP_HOST=0.0.0.0 HTTP_PORT=3000 HTTP_BEARER_TOKEN=change-me node dist/transports/http.js
+HTTP_HOST=0.0.0.0 HTTP_PORT=3000 HTTP_BEARER_TOKEN=change-me node --env-file=.env dist/transports/http.js
 ```
 
 ## Docker
@@ -102,4 +102,4 @@ This server depends on public information published by:
 - VMZ Bremen / ASV Bremen
 - bremen.de
 
-Keep source URLs accurate in `.env` and respect the upstream sites’ availability and operational constraints.
+Keep source URLs accurate in your exported environment or `--env-file` input and respect the upstream sites’ availability and operational constraints.

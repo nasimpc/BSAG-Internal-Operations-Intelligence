@@ -6,13 +6,14 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
 
 import { createApplication } from '../../src/app.js';
 import { createLogger } from '../../src/shared/logger.js';
 import { FixedClock } from '../../src/shared/clock.js';
 import { buildTestEnv, startFixtureServer } from '../support/fixture-server.js';
 
-const ROOT = '/home/nasimpcm/Desktop/BSAG-MCP/.worktrees/bsag-briefing-server';
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 describe('stdio transport', () => {
   it('creates the application lifecycle and toggles readiness on close without fetching public data', async () => {
@@ -47,12 +48,14 @@ describe('stdio transport', () => {
     const directory = mkdtempSync(join(tmpdir(), 'bsag-stdio-'));
     const dataPath = join(directory, 'storage.sqlite');
     const childEnv = buildChildEnv(
-      buildTestEnv(fixtureServer.baseUrl, dataPath),
+      buildTestEnv(fixtureServer.baseUrl, dataPath, {
+        includeCorridorsPath: false,
+      }),
     );
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [resolve(ROOT, 'dist/transports/stdio.js')],
-      cwd: ROOT,
+      cwd: directory,
       env: childEnv,
       stderr: 'pipe',
     });
@@ -103,13 +106,15 @@ describe('stdio transport', () => {
     const directory = mkdtempSync(join(tmpdir(), 'bsag-stdio-exit-'));
     const dataPath = join(directory, 'storage.sqlite');
     const childEnv = buildChildEnv(
-      buildTestEnv(fixtureServer.baseUrl, dataPath),
+      buildTestEnv(fixtureServer.baseUrl, dataPath, {
+        includeCorridorsPath: false,
+      }),
     );
     const child = spawn(
       process.execPath,
       [resolve(ROOT, 'dist/transports/stdio.js')],
       {
-        cwd: ROOT,
+        cwd: directory,
         env: childEnv,
         stdio: ['pipe', 'pipe', 'pipe'],
       },

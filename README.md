@@ -27,7 +27,7 @@ npm run build
 
 ```bash
 cp .env.example .env
-node dist/transports/stdio.js
+node --env-file=.env dist/transports/stdio.js
 ```
 
 Example client configuration:
@@ -49,20 +49,20 @@ Example client configuration:
 Loopback-only startup:
 
 ```bash
-HTTP_HOST=127.0.0.1 HTTP_PORT=3000 node dist/transports/http.js
+node --env-file=.env dist/transports/http.js
 ```
 
 Non-loopback startup requires a bearer token:
 
 ```bash
-HTTP_HOST=0.0.0.0 HTTP_PORT=3000 HTTP_BEARER_TOKEN=change-me node dist/transports/http.js
+HTTP_HOST=0.0.0.0 HTTP_PORT=3000 HTTP_BEARER_TOKEN=change-me node --env-file=.env dist/transports/http.js
 ```
 
 HTTP rules:
 
 - loopback hosts (`127.0.0.1`, `localhost`, `::1`) can run without a bearer token
 - non-loopback hosts must set `HTTP_BEARER_TOKEN`
-- requests with an `Origin` header are rejected unless the origin matches the configured host or `HTTP_ALLOWED_ORIGINS`
+- requests with an `Origin` header are rejected unless the exact origin or hostname matches the configured allowlist
 - `/health/live` returns process liveness
 - `/health/ready` returns database readiness
 
@@ -71,19 +71,21 @@ HTTP rules:
 Key runtime variables:
 
 - `BSAG_MCP_DATA_DIR`: writable directory for SQLite storage; the server stores `bsag.sqlite` inside it
-- `CORRIDORS_PATH`: corridor mapping JSON, default `./config/corridors.json`
+- `CORRIDORS_PATH`: corridor mapping JSON, default packaged `config/corridors.json` beside the installed binaries
 - `HTTP_HOST`: bind host for HTTP mode, default `127.0.0.1`
 - `HTTP_PORT`: bind port for HTTP mode, default `3000`
 - `HTTP_BEARER_TOKEN`: required when `HTTP_HOST` is not loopback
-- `HTTP_ALLOWED_ORIGINS`: comma-separated allowed origins or hostnames
+- `HTTP_ALLOWED_ORIGINS`: comma-separated allowed exact origins or hostnames
 - `RETENTION_DAYS`: SQLite retention for realtime snapshots, default `30`
 - `REALTIME_REFRESH_INTERVAL_SECONDS`: GTFS-Realtime reuse window, default `60`
+
+The server does not auto-load `.env`; use Node's `--env-file` flag or export variables in the shell.
 
 Public source URLs are also configurable; see [.env.example](.env.example).
 
 ## Corridor editing
 
-Corridors are editable in [config/corridors.json](/home/nasimpcm/Desktop/BSAG-MCP/.worktrees/bsag-briefing-server/config/corridors.json). The file maps public line IDs and conservative place-name aliases. It does not claim geometric route overlap.
+Corridors are editable in [config/corridors.json](config/corridors.json). The file maps public line IDs and conservative place-name aliases. It does not claim geometric route overlap.
 
 ## SQLite retention
 
@@ -169,4 +171,4 @@ Common warning patterns:
 
 If warnings persist, verify the live source HTML or feed structure before changing the parser.
 
-More deployment and operations detail lives in [docs/operations.md](/home/nasimpcm/Desktop/BSAG-MCP/.worktrees/bsag-briefing-server/docs/operations.md).
+More deployment and operations detail lives in [docs/operations.md](docs/operations.md).

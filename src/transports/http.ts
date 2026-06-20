@@ -207,17 +207,18 @@ function isOriginAllowed(
 ): boolean {
   try {
     const parsed = new URL(origin);
+    const normalizedOrigin = parsed.origin.toLowerCase();
     const originHost = parsed.hostname.toLowerCase();
-    const allowedHosts = new Set<string>([
-      ...configuredAllowedOrigins.map((value) => {
-        try {
-          return new URL(value).hostname.toLowerCase();
-        } catch {
-          return value.toLowerCase();
-        }
-      }),
-      host.toLowerCase(),
-    ]);
+    const allowedOrigins = new Set<string>();
+    const allowedHosts = new Set<string>([host.toLowerCase()]);
+
+    for (const value of configuredAllowedOrigins) {
+      try {
+        allowedOrigins.add(new URL(value).origin.toLowerCase());
+      } catch {
+        allowedHosts.add(value.toLowerCase());
+      }
+    }
 
     if (LOOPBACK_HOSTS.has(host)) {
       allowedHosts.add('127.0.0.1');
@@ -225,7 +226,7 @@ function isOriginAllowed(
       allowedHosts.add('::1');
     }
 
-    return allowedHosts.has(originHost);
+    return allowedOrigins.has(normalizedOrigin) || allowedHosts.has(originHost);
   } catch {
     return false;
   }

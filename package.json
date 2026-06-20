@@ -20,13 +20,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "npm run build && vitest run",
+    "test:coverage": "npm run build && vitest run --coverage",
     "test:live": "BSAG_LIVE_TESTS=1 vitest run tests/live",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage",
     "start": "node dist/transports/stdio.js",
     "start:http": "node dist/transports/http.js"
   },

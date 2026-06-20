@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { Dispatcher } from 'undici';
 import type { Logger } from 'pino';
@@ -34,6 +35,9 @@ const HTML_FETCH_POLICY: TextFetchPolicy = {
   maxBytes: 2_000_000,
   timeoutMs: 10_000,
 };
+const DEFAULT_CORRIDORS_PATH = fileURLToPath(
+  new URL('../config/corridors.json', import.meta.url),
+);
 
 const runtimeEnvSchema = z.object({
   HTTP_PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
@@ -41,11 +45,7 @@ const runtimeEnvSchema = z.object({
   HTTP_ALLOWED_ORIGINS: z.string().optional(),
   DATA_PATH: z.string().trim().min(1).optional(),
   BSAG_MCP_DATA_DIR: z.string().trim().min(1).optional(),
-  CORRIDORS_PATH: z
-    .string()
-    .trim()
-    .min(1)
-    .default(resolve(process.cwd(), 'config/corridors.json')),
+  CORRIDORS_PATH: z.string().trim().min(1).default(DEFAULT_CORRIDORS_PATH),
 });
 
 export interface ApplicationConfig {

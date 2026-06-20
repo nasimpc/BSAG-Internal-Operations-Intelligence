@@ -58,6 +58,7 @@ describe('http transport', () => {
     const app = createHttpApp({
       application,
       host: '127.0.0.1',
+      allowedOrigins: ['https://allowed.example'],
       logger: createLogger({ level: 'silent' }),
     });
 
@@ -89,6 +90,14 @@ describe('http transport', () => {
       await request(app)
         .post('/mcp')
         .set('Origin', 'https://evil.example')
+        .set('Accept', 'application/json')
+        .set('MCP-Protocol-Version', LATEST_PROTOCOL_VERSION)
+        .send(initializeRequest())
+        .expect(403);
+
+      await request(app)
+        .post('/mcp')
+        .set('Origin', 'http://allowed.example:9999')
         .set('Accept', 'application/json')
         .set('MCP-Protocol-Version', LATEST_PROTOCOL_VERSION)
         .send(initializeRequest())
