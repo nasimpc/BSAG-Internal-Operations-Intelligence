@@ -1,0 +1,70 @@
+[
+  {
+    "id": "central",
+    "description": "Editable starter mapping for the central city corridor. Uses public line IDs and place-name aliases only, without claiming geometric coverage.",
+    "aliases": [
+      "Hauptbahnhof",
+      "Domsheide",
+      "Am Brill",
+      "Altstadt",
+      "Mitte",
+      "Schüsselkorb",
+      "Sögestraße"
+    ],
+    "line_ids": ["1", "4", "5", "6", "8", "24", "25"]
+  },
+  {
+    "id": "east",
+    "description": "Editable starter mapping for the east corridor. Uses public line IDs and well-known districts, streets, stops, and venues only.",
+    "aliases": [
+      "Ostertor",
+      "Peterswerder",
+      "Hemelingen",
+      "Sebaldsbrück",
+      "Sankt-Jürgen-Straße",
+      "Münchener Straße",
+      "Weserpark"
+    ],
+    "line_ids": ["1E", "2", "3", "10", "25", "29", "40", "41"]
+  },
+  {
+    "id": "west",
+    "description": "Editable starter mapping for the west corridor. Uses public line IDs and place-name aliases only, without claiming geometric coverage.",
+    "aliases": [
+      "Walle",
+      "Gröpelingen",
+      "Oslebshausen",
+      "Use Akschen",
+      "Weserwehr",
+      "Lindenhofstraße"
+    ],
+    "line_ids": ["2", "3", "5", "10", "20", "26", "28"]
+  },
+  {
+    "id": "north",
+    "description": "Editable starter mapping for the north corridor. Uses public line IDs and place-name aliases only, without claiming geometric coverage.",
+    "aliases": [
+      "Findorff",
+      "Bürgerweide",
+      "Universität",
+      "Horn",
+      "Bürgerpark",
+      "Kulenkampffallee"
+    ],
+    "line_ids": ["6", "21", "24", "27", "28", "31", "32"]
+  },
+  {
+    "id": "south",
+    "description": "Editable starter mapping for the south corridor. Uses public line IDs and place-name aliases only, without claiming geometric coverage.",
+    "aliases": [
+      "Neustadt",
+      "Flughafen",
+      "Woltmershausen",
+      "Huckelriede",
+      "Arsten",
+      "Roland-Center",
+      "Duckwitzstraße"
+    ],
+    "line_ids": ["1", "4", "6", "24", "26", "51", "53"]
+  }
+]

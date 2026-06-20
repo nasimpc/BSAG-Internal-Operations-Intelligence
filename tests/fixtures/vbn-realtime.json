@@ -1,0 +1,75 @@
+{
+  "Header": {
+    "GtfsRealtimeVersion": "2.0",
+    "Timestamp": 1781934900
+  },
+  "Entity": [
+    {
+      "Id": "entity-1",
+      "TripUpdate": {
+        "Trip": {
+          "TripId": "trip-1",
+          "RouteId": "1"
+        },
+        "StopTimeUpdate": [
+          { "StopSequence": 1, "Departure": { "Delay": 0 } },
+          { "StopSequence": 2, "Arrival": { "Delay": 180 } },
+          { "StopSequence": 3, "Arrival": { "Delay": 420 } }
+        ]
+      }
+    },
+    {
+      "Id": "entity-2",
+      "TripUpdate": {
+        "Trip": {
+          "TripId": "trip-2",
+          "RouteId": "1"
+        },
+        "Delay": 180,
+        "StopTimeUpdate": [{ "StopSequence": 1 }, { "StopSequence": 2 }]
+      }
+    },
+    {
+      "Id": "entity-3",
+      "TripUpdate": {
+        "Trip": {
+          "TripId": "trip-3",
+          "RouteId": "1"
+        },
+        "StopTimeUpdate": [{ "StopSequence": 1, "Arrival": { "Delay": 0 } }]
+      }
+    },
+    {
+      "Id": "entity-4",
+      "TripUpdate": {
+        "Trip": {
+          "TripId": "trip-4",
+          "RouteId": "4",
+          "ScheduleRelationship": "CANCELED"
+        },
+        "StopTimeUpdate": [{ "StopSequence": 1 }]
+      }
+    },
+    {
+      "Id": "entity-5",
+      "TripUpdate": {
+        "Trip": {
+          "TripId": "trip-5",
+          "RouteId": "4"
+        },
+        "StopTimeUpdate": [
+          { "StopSequence": 1, "ScheduleRelationship": "SKIPPED" }
+        ]
+      }
+    },
+    {
+      "Id": "entity-malformed",
+      "TripUpdate": {
+        "Trip": {
+          "TripId": "trip-bad"
+        },
+        "StopTimeUpdate": [{ "StopSequence": 1 }]
+      }
+    }
+  ]
+}
