@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>VMZ Bremen Verkehrslage</title>
+    <item>
+      <title>A27: Unfall zwischen Horn-Lehe und Vahr</title>
+      <link>https://vmz.bremen.de/verkehrslage/aktuell/a27-unfall</link>
+      <pubDate>Sat, 20 Jun 2026 05:30:00 +0200</pubDate>
+      <description>Stau wegen eines Unfalls im morgendlichen Verkehr.</description>
+      <content:encoded><![CDATA[<p>Bitte mehr Fahrzeit einplanen.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>B75: Baustelle an der Stephanibrücke</title>
+      <link>https://vmz.bremen.de/verkehrslage/aktuell/b75-baustelle</link>
+      <pubDate>Sat, 20 Jun 2026 06:15:00 +0200</pubDate>
+      <description>Baustelle mit Spurverengung in Richtung Innenstadt.</description>
+    </item>
+    <item>
+      <title>Unvollständiger Eintrag</title>
+      <description>Ohne Link sollte dieser Eintrag verworfen werden.</description>
+    </item>
+  </channel>
+</rss>
