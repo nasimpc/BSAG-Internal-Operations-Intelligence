@@ -12,8 +12,7 @@ export default defineConfig({
       include: [
         'src/domain/**/*.ts',
         'src/services/**/*.ts',
-        'src/**/*parser*.ts',
-        'src/**/*Parser*.ts',
+        'src/sources/**/*.ts',
       ],
       thresholds: {
         lines: 90,

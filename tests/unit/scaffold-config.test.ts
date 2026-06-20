@@ -8,8 +8,7 @@ describe('scaffold configuration', () => {
     expect(vitestConfig.test?.coverage?.include).toEqual([
       'src/domain/**/*.ts',
       'src/services/**/*.ts',
-      'src/**/*parser*.ts',
-      'src/**/*Parser*.ts',
+      'src/sources/**/*.ts',
     ]);
   });
 
