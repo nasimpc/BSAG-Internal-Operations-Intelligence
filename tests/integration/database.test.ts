@@ -24,7 +24,9 @@ describe('openDatabase', () => {
       expect(handle.connection.pragma('journal_mode', { simple: true })).toBe(
         'wal',
       );
-      expect(handle.connection.pragma('foreign_keys', { simple: true })).toBe(1);
+      expect(handle.connection.pragma('foreign_keys', { simple: true })).toBe(
+        1,
+      );
       expect(handle.connection.pragma('busy_timeout', { simple: true })).toBe(
         5000,
       );
@@ -41,15 +43,17 @@ describe('openDatabase', () => {
 
     try {
       const firstRows = first.connection
-        .prepare<[], { count: number }>(
-          'SELECT COUNT(*) AS count FROM schema_migrations',
-        )
+        .prepare<
+          [],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM schema_migrations')
         .all();
       firstMigrationCount = firstRows[0]?.count ?? 0;
       const tableRows = first.connection
-        .prepare<[], { name: string }>(
-          "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
-        )
+        .prepare<
+          [],
+          { name: string }
+        >("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all();
       const tableNames = tableRows.map((row) => row.name);
 
@@ -72,9 +76,10 @@ describe('openDatabase', () => {
 
     try {
       const secondRows = second.connection
-        .prepare<[], { count: number }>(
-          'SELECT COUNT(*) AS count FROM schema_migrations',
-        )
+        .prepare<
+          [],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM schema_migrations')
         .all();
       const secondMigrationCount = secondRows[0]?.count ?? 0;
 

@@ -38,7 +38,8 @@ describe('presentToolEnvelope', () => {
         {
           source: 'vmz_web',
           code: 'SOURCE_TIMEOUT',
-          message: 'VMZ roadworks page timed out; feed-only coverage is in use.',
+          message:
+            'VMZ roadworks page timed out; feed-only coverage is in use.',
           occurred_at: '2026-06-20T06:00:00.000Z',
           retryable: true,
         },
@@ -47,10 +48,7 @@ describe('presentToolEnvelope', () => {
 
     const result = presentToolEnvelope({
       title: 'Line health snapshot',
-      summary: [
-        'Requested lines: 10.',
-        'Average delay is 6 minutes.',
-      ],
+      summary: ['Requested lines: 10.', 'Average delay is 6 minutes.'],
       envelope,
     });
 

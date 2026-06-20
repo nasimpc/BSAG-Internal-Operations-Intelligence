@@ -24,8 +24,12 @@ describe('parseBsagNoticesHtml', () => {
     expect(first.data.map((notice) => notice.id)).toEqual(
       second.data.map((notice) => notice.id),
     );
-    const lineFourNotice = first.data.find((notice) => notice.title.includes('Linie 4'));
-    const lineSixNotice = first.data.find((notice) => notice.title.includes('Linie 6'));
+    const lineFourNotice = first.data.find((notice) =>
+      notice.title.includes('Linie 4'),
+    );
+    const lineSixNotice = first.data.find((notice) =>
+      notice.title.includes('Linie 6'),
+    );
 
     expect(lineFourNotice).toBeDefined();
     expect(lineFourNotice?.lines).toEqual(['4']);
@@ -38,9 +42,9 @@ describe('parseBsagNoticesHtml', () => {
     expect(lineSixNotice).toBeDefined();
     expect(lineSixNotice?.lines).toEqual(['6', '6E']);
     expect(lineSixNotice?.stop_names).toEqual(['Flughafen Bremen']);
-    expect(first.data.some((notice) => /Jahresbericht/i.test(notice.title))).toBe(
-      false,
-    );
+    expect(
+      first.data.some((notice) => /Jahresbericht/i.test(notice.title)),
+    ).toBe(false);
   });
 
   it('returns PARSER_NO_RECORDS for a structurally valid page without operational notice candidates', () => {

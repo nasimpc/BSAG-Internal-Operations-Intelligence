@@ -1,4 +1,8 @@
-import type { ServiceNotice, SourceId, SourceWarning } from '../domain/models.js';
+import type {
+  ServiceNotice,
+  SourceId,
+  SourceWarning,
+} from '../domain/models.js';
 import { type SourceOutcome, warning } from '../domain/result.js';
 import type { Clock } from '../shared/clock.js';
 import type { DatabaseRepositories } from '../storage/repositories.js';
@@ -203,21 +207,30 @@ function sourceIdFromErrorIndex(
     return undefined;
   }
 
-  return failedIndex === 0 ? 'bsag' : failedIndex === 1 ? 'vbn_notices' : undefined;
+  return failedIndex === 0
+    ? 'bsag'
+    : failedIndex === 1
+      ? 'vbn_notices'
+      : undefined;
 }
 
-function sourceFetchedAt(outcome: SourceOutcome<ServiceNotice[]>, now: string): string {
+function sourceFetchedAt(
+  outcome: SourceOutcome<ServiceNotice[]>,
+  now: string,
+): string {
   return (
-    outcome.sources.find((sourceStatus) => sourceStatus.fetched_at !== undefined)
-      ?.fetched_at ??
+    outcome.sources.find(
+      (sourceStatus) => sourceStatus.fetched_at !== undefined,
+    )?.fetched_at ??
     outcome.data[0]?.provenance.fetchedAt ??
     now
   );
 }
 
 function defaultSince(now: Date): string {
-  return new Date(now.getTime() - DEFAULT_LOOKBACK_DAYS * DAY_IN_MILLISECONDS)
-    .toISOString();
+  return new Date(
+    now.getTime() - DEFAULT_LOOKBACK_DAYS * DAY_IN_MILLISECONDS,
+  ).toISOString();
 }
 
 function normalizeLineIds(lineIds: string[] | undefined): Set<string> {
@@ -236,15 +249,23 @@ function normalizeStopNames(stopNames: string[] | undefined): Set<string> {
   );
 }
 
-function matchesLines(notice: ServiceNotice, requestedLines: Set<string>): boolean {
+function matchesLines(
+  notice: ServiceNotice,
+  requestedLines: Set<string>,
+): boolean {
   if (requestedLines.size === 0) {
     return true;
   }
 
-  return notice.lines.some((lineId) => requestedLines.has(lineId.toUpperCase()));
+  return notice.lines.some((lineId) =>
+    requestedLines.has(lineId.toUpperCase()),
+  );
 }
 
-function matchesStops(notice: ServiceNotice, requestedStops: Set<string>): boolean {
+function matchesStops(
+  notice: ServiceNotice,
+  requestedStops: Set<string>,
+): boolean {
   if (requestedStops.size === 0) {
     return true;
   }
@@ -289,14 +310,23 @@ function dedupeKey(notice: ServiceNotice): string {
   return [
     normalizeText(notice.title),
     normalizeText(notice.summary),
-    notice.lines.map((line) => line.toUpperCase()).sort().join(','),
-    notice.stop_names.map((stop) => normalizeText(stop)).sort().join(','),
+    notice.lines
+      .map((line) => line.toUpperCase())
+      .sort()
+      .join(','),
+    notice.stop_names
+      .map((stop) => normalizeText(stop))
+      .sort()
+      .join(','),
     notice.valid_from ?? '',
     notice.valid_to ?? '',
   ].join('|');
 }
 
-function compareNoticePriority(left: ServiceNotice, right: ServiceNotice): number {
+function compareNoticePriority(
+  left: ServiceNotice,
+  right: ServiceNotice,
+): number {
   const leftSourcePriority = sourcePriority(left.provenance.source);
   const rightSourcePriority = sourcePriority(right.provenance.source);
 
@@ -315,7 +345,8 @@ function compareNotices(left: ServiceNotice, right: ServiceNotice): number {
     return leftEffective ? -1 : 1;
   }
 
-  const recencyDifference = referenceTimestamp(right) - referenceTimestamp(left);
+  const recencyDifference =
+    referenceTimestamp(right) - referenceTimestamp(left);
 
   if (recencyDifference !== 0) {
     return recencyDifference;

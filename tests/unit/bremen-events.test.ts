@@ -53,4 +53,66 @@ describe('parseBremenEventsHtml', () => {
       }),
     );
   });
+
+  it('parses JSON-LD address objects and HTML fallback cards with invalid JSON-LD safely ignored', () => {
+    const outcome = parseBremenEventsHtml(
+      [
+        '<main>',
+        '  <script type="application/ld+json">{invalid json</script>',
+        '  <script type="application/ld+json">',
+        '    {',
+        '      "@graph": [',
+        '        {',
+        '          "@type": ["Thing", "Event"],',
+        '          "name": "Neighbourhood market",',
+        '          "startDate": "2026-06-21",',
+        '          "location": {',
+        '            "name": "Marktplatz",',
+        '            "address": {',
+        '              "streetAddress": "Markt 1",',
+        '              "addressLocality": "Bremen"',
+        '            }',
+        '          }',
+        '        }',
+        '      ]',
+        '    }',
+        '  </script>',
+        '  <article data-event-card>',
+        '    <h2>Harbour walk</h2>',
+        '    <time datetime="2026-06-21T09:30:00Z"></time>',
+        '    <span data-location>Vegesack</span>',
+        '  </article>',
+        '  <article data-event-card>',
+        '    <h2>Draft card without time</h2>',
+        '  </article>',
+        '</main>',
+      ].join('\n'),
+      sourceUrl,
+      fetchedAt,
+    );
+    const market = outcome.data.find(
+      (impact) => impact.title === 'Neighbourhood market',
+    );
+    const harbourWalk = outcome.data.find(
+      (impact) => impact.title === 'Harbour walk',
+    );
+
+    expect(market).toMatchObject({
+      title: 'Neighbourhood market',
+      summary: 'Neighbourhood market at Marktplatz, Markt 1, Bremen',
+      details: 'Marktplatz, Markt 1, Bremen',
+      starts_at: '2026-06-20T22:00:00.000Z',
+      ends_at: '2026-06-20T22:00:00.000Z',
+      severity: 'low',
+    });
+    expect(market?.provenance.sourceUrl).toBe(sourceUrl.toString());
+    expect(harbourWalk).toMatchObject({
+      title: 'Harbour walk',
+      summary: 'Harbour walk at Vegesack',
+      details: 'Vegesack',
+      starts_at: '2026-06-21T09:30:00.000Z',
+      ends_at: '2026-06-21T09:30:00.000Z',
+    });
+    expect(harbourWalk?.provenance.sourceUrl).toBe(sourceUrl.toString());
+  });
 });

@@ -92,10 +92,14 @@ export interface ShiftBriefServiceOptions {
       >
     >;
   };
-  passengerInformation(input: DraftPassengerInformationInput): PassengerInformationDraft;
+  passengerInformation(
+    input: DraftPassengerInformationInput,
+  ): PassengerInformationDraft;
   riskConfig: RiskConfig;
   serviceNoticesService: {
-    get(input: { line_ids?: string[] }): Promise<SourceOutcome<ServiceNotice[]>>;
+    get(input: {
+      line_ids?: string[];
+    }): Promise<SourceOutcome<ServiceNotice[]>>;
   };
 }
 
@@ -120,11 +124,14 @@ export class ShiftBriefService {
     this.#serviceNoticesService = options.serviceNoticesService;
   }
 
-  async build(
-    input: ShiftBriefBuildInput,
-  ): Promise<SourceOutcome<ShiftBrief>> {
-    const selectedCorridors = resolveShiftCorridors(this.#corridors, input.corridors);
-    const candidateLines = [...new Set(selectedCorridors.flatMap((corridor) => corridor.line_ids))];
+  async build(input: ShiftBriefBuildInput): Promise<SourceOutcome<ShiftBrief>> {
+    const selectedCorridors = resolveShiftCorridors(
+      this.#corridors,
+      input.corridors,
+    );
+    const candidateLines = [
+      ...new Set(selectedCorridors.flatMap((corridor) => corridor.line_ids)),
+    ];
     const baselineAt = this.#clock.now().toISOString();
     const shiftWindow = buildShiftWindow(input.date);
     const [lineHealthOutcome, noticesOutcome, impactsOutcome] =
@@ -140,8 +147,12 @@ export class ShiftBriefService {
 
     const lineAssessments = candidateLines
       .map((lineId) => {
-        const lineHealth = lineHealthOutcome.data.find((entry) => entry.line_id === lineId);
-        const notices = noticesOutcome.data.filter((notice) => notice.lines.includes(lineId));
+        const lineHealth = lineHealthOutcome.data.find(
+          (entry) => entry.line_id === lineId,
+        );
+        const notices = noticesOutcome.data.filter((notice) =>
+          notice.lines.includes(lineId),
+        );
         const matchQuality = notices.length > 0 ? 'exact' : 'phrase';
 
         return this.#assessRisk(
@@ -177,12 +188,9 @@ export class ShiftBriefService {
         target_id: corridor.id,
         score: corridorScore,
         band: bandForBrief(corridorScore),
-        contributions:
-          corridorLineAssessments[0]?.contributions ?? [],
-        confidence:
-          corridorLineAssessments[0]?.confidence ?? 'low',
-        warnings:
-          corridorLineAssessments[0]?.warnings ?? [],
+        contributions: corridorLineAssessments[0]?.contributions ?? [],
+        confidence: corridorLineAssessments[0]?.confidence ?? 'low',
+        warnings: corridorLineAssessments[0]?.warnings ?? [],
       };
     });
 
@@ -234,7 +242,10 @@ export class ShiftBriefService {
         overlaps,
         communications,
         operational_actions: lineAssessments
-          .filter((assessment) => assessment.band === 'high' || assessment.band === 'severe')
+          .filter(
+            (assessment) =>
+              assessment.band === 'high' || assessment.band === 'severe',
+          )
           .map(
             (assessment) =>
               `Prepare operational messaging for line ${assessment.target_id}.`,
@@ -263,7 +274,9 @@ function resolveShiftCorridors(
   }
 
   return requestedIds.map((requestedId) => {
-    const corridor = allCorridors.find((candidate) => candidate.id === requestedId);
+    const corridor = allCorridors.find(
+      (candidate) => candidate.id === requestedId,
+    );
 
     if (corridor === undefined) {
       throw new InputError(`Unknown corridor "${requestedId}"`);

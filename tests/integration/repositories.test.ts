@@ -56,9 +56,7 @@ function buildDelayObservation(
   };
 }
 
-function buildNotice(
-  overrides: Partial<ServiceNotice> = {},
-): ServiceNotice {
+function buildNotice(overrides: Partial<ServiceNotice> = {}): ServiceNotice {
   return {
     id: 'notice-1',
     title: 'Line 1 diversion',
@@ -117,9 +115,10 @@ describe('storage repositories', () => {
       });
 
       const rows = harness.handle.connection
-        .prepare<[string], { count: number }>(
-          'SELECT COUNT(*) AS count FROM source_state WHERE source = ?',
-        )
+        .prepare<
+          [string],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM source_state WHERE source = ?')
         .all('bsag');
 
       expect(rows[0]?.count).toBe(1);
@@ -141,14 +140,18 @@ describe('storage repositories', () => {
     });
 
     try {
-      harness.repositories.serviceNotices.replaceForSource('bsag', [notice, notice]);
+      harness.repositories.serviceNotices.replaceForSource('bsag', [
+        notice,
+        notice,
+      ]);
 
       expect(harness.repositories.serviceNotices.listAll()).toEqual([notice]);
 
       const rawRow = harness.handle.connection
-        .prepare<[], { linesJson: string; provenanceJson: string }>(
-          'SELECT lines_json AS linesJson, provenance_json AS provenanceJson FROM service_notices',
-        )
+        .prepare<
+          [],
+          { linesJson: string; provenanceJson: string }
+        >('SELECT lines_json AS linesJson, provenance_json AS provenanceJson FROM service_notices')
         .get();
 
       expect(rawRow).toBeDefined();
@@ -158,12 +161,15 @@ describe('storage repositories', () => {
         contentHash: 'notice-hash-1',
       });
 
-      harness.repositories.serviceNotices.replaceForSource('bsag', [updatedNotice]);
+      harness.repositories.serviceNotices.replaceForSource('bsag', [
+        updatedNotice,
+      ]);
 
       const noticeRows = harness.handle.connection
-        .prepare<[], { count: number }>(
-          'SELECT COUNT(*) AS count FROM service_notices',
-        )
+        .prepare<
+          [],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM service_notices')
         .all();
 
       expect(noticeRows[0]?.count).toBe(1);
@@ -200,9 +206,10 @@ describe('storage repositories', () => {
       ]);
 
       const rows = harness.handle.connection
-        .prepare<[], { count: number }>(
-          'SELECT COUNT(*) AS count FROM external_impacts',
-        )
+        .prepare<
+          [],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM external_impacts')
         .all();
 
       expect(rows[0]?.count).toBe(1);
@@ -271,14 +278,16 @@ describe('storage repositories', () => {
       );
 
       const snapshotRows = harness.handle.connection
-        .prepare<[], { count: number }>(
-          'SELECT COUNT(*) AS count FROM realtime_snapshots',
-        )
+        .prepare<
+          [],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM realtime_snapshots')
         .all();
       const observationRows = harness.handle.connection
-        .prepare<[], { count: number }>(
-          'SELECT COUNT(*) AS count FROM delay_observations',
-        )
+        .prepare<
+          [],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM delay_observations')
         .all();
 
       expect(snapshotRows[0]?.count).toBe(1);

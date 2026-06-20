@@ -266,7 +266,9 @@ export function parseVmzFeedXml(
     const item = isRssItem(rawItem) ? rawItem : undefined;
     const title = normalizeWhitespace(asString(item?.title));
     const link = asString(item?.link);
-    const description = normalizeWhitespace(stripHtml(asString(item?.description)));
+    const description = normalizeWhitespace(
+      stripHtml(asString(item?.description)),
+    );
     const content = normalizeWhitespace(
       stripHtml(asString(item?.['content:encoded'])),
     );
@@ -288,7 +290,9 @@ export function parseVmzFeedXml(
     }
 
     const absoluteUrl = new URL(link, sourceUrl);
-    const details = normalizeWhitespace([description, content].filter(Boolean).join(' '));
+    const details = normalizeWhitespace(
+      [description, content].filter(Boolean).join(' '),
+    );
     const category = /baustelle|sperr|umleitung/iu.test(`${title} ${details}`)
       ? 'roadworks'
       : 'incident';
@@ -431,7 +435,8 @@ export function parseVmzRoadworksText(
 }
 
 async function defaultExtractPdfText(bytes: Uint8Array): Promise<string> {
-  const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as PdfJsModule;
+  const pdfjs =
+    (await import('pdfjs-dist/legacy/build/pdf.mjs')) as PdfJsModule;
   const loadingTask = pdfjs.getDocument({ data: bytes });
   const document = await loadingTask.promise;
   const pageCount = Math.min(document.numPages, MAX_PDF_PAGES);

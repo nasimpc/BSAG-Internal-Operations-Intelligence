@@ -43,7 +43,10 @@ export function parseBsagNoticesHtml(
       continue;
     }
 
-    const absoluteUrl = new URL(link.attr('href') ?? sourceUrl.toString(), sourceUrl);
+    const absoluteUrl = new URL(
+      link.attr('href') ?? sourceUrl.toString(),
+      sourceUrl,
+    );
     const summary = firstUnlabelledParagraph(paragraphs);
     const validity = parseDateWindow(extractLabelledText(paragraphs, 'Dauer'));
     const publishedAt = article.find('time').attr('datetime');
@@ -180,7 +183,9 @@ function extractLineTokens(title: string, paragraphs: string[]): string[] {
   ];
 
   return [
-    ...new Set(candidates.flatMap((value) => value.match(LINE_TOKEN_PATTERN) ?? [])),
+    ...new Set(
+      candidates.flatMap((value) => value.match(LINE_TOKEN_PATTERN) ?? []),
+    ),
   ];
 }
 

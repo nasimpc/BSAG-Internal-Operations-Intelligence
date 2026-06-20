@@ -209,7 +209,8 @@ describe('http transport', () => {
         name: 'draft_passenger_information',
         arguments: {
           line_ids: ['10'],
-          issue_summary: 'Roadworks may affect the eastern corridor tomorrow morning.',
+          issue_summary:
+            'Roadworks may affect the eastern corridor tomorrow morning.',
           channel: 'app',
         },
       });
@@ -278,7 +279,9 @@ function fakeApplication(ready: boolean): Application {
       },
     },
     createMcpServer() {
-      throw new Error('MCP server should not be created in this health-only test');
+      throw new Error(
+        'MCP server should not be created in this health-only test',
+      );
     },
     readiness: {
       isReady: () => ready,

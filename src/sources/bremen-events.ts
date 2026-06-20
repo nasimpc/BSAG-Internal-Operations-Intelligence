@@ -53,7 +53,9 @@ export function parseBremenEventsHtml(
     }
   }
 
-  for (const element of $('article, .event-card, [data-event-card]').toArray()) {
+  for (const element of $(
+    'article, .event-card, [data-event-card]',
+  ).toArray()) {
     const candidate = toHtmlCandidate($, element, sourceUrl, fetchedAt);
 
     if (candidate === undefined) {
@@ -162,9 +164,13 @@ function toHtmlCandidate(
   const title = normalizeWhitespace(link.text() || article.find('h2').text());
   const timeElements = article.find('time').toArray();
   const startRaw =
-    timeElements[0] === undefined ? '' : $(timeElements[0]).attr('datetime') ?? '';
+    timeElements[0] === undefined
+      ? ''
+      : ($(timeElements[0]).attr('datetime') ?? '');
   const endRaw =
-    timeElements[1] === undefined ? '' : $(timeElements[1]).attr('datetime') ?? '';
+    timeElements[1] === undefined
+      ? ''
+      : ($(timeElements[1]).attr('datetime') ?? '');
   const startsAt = normalizeEventDate(startRaw, false);
   const endsAt = normalizeEventDate(endRaw, true, startsAt);
 
@@ -172,15 +178,21 @@ function toHtmlCandidate(
     return undefined;
   }
 
-  const absoluteUrl = new URL(link.attr('href') ?? sourceUrl.toString(), sourceUrl);
+  const absoluteUrl = new URL(
+    link.attr('href') ?? sourceUrl.toString(),
+    sourceUrl,
+  );
   const location = normalizeWhitespace(
     article.find('.location').first().text() ||
       article.find('[data-location]').first().text(),
   );
   const summary = normalizeWhitespace(
-    article.find('.summary').first().text() || buildEventSummary(title, location),
+    article.find('.summary').first().text() ||
+      buildEventSummary(title, location),
   );
-  const contentHash = sha256Text([title, startsAt, endsAt, location, summary].join('|'));
+  const contentHash = sha256Text(
+    [title, startsAt, endsAt, location, summary].join('|'),
+  );
 
   return {
     id: stableId('bremen_events', absoluteUrl.toString(), title, contentHash),
@@ -309,11 +321,7 @@ function dedupeKey(
 ): string {
   void location;
 
-  return [
-    normalizeKey(title),
-    startsAt,
-    endsAt ?? '',
-  ].join('|');
+  return [normalizeKey(title), startsAt, endsAt ?? ''].join('|');
 }
 
 function locationText(value: unknown): string {

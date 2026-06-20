@@ -79,9 +79,7 @@ export interface AssessRiskInput {
   match_quality: 'exact' | 'phrase' | 'none';
 }
 
-export function bandForScore(
-  score: number,
-): RiskAssessment['band'] {
+export function bandForScore(score: number): RiskAssessment['band'] {
   if (score >= 75) {
     return 'severe';
   }
@@ -153,12 +151,11 @@ export function assessRisk(
     }
   }
 
-  const noticePoints =
-    input.notices.reduce(
-      (highest, notice) =>
-        Math.max(highest, config.noticePoints[notice.severity]),
-      0,
-    );
+  const noticePoints = input.notices.reduce(
+    (highest, notice) =>
+      Math.max(highest, config.noticePoints[notice.severity]),
+    0,
+  );
 
   if (noticePoints > 0) {
     contributions.push({
@@ -168,9 +165,12 @@ export function assessRisk(
     });
   }
 
-  const roadworkImpacts = input.impacts.filter((impact) => impact.category !== 'event');
+  const roadworkImpacts = input.impacts.filter(
+    (impact) => impact.category !== 'event',
+  );
   const roadworkPoints = roadworkImpacts.reduce(
-    (highest, impact) => Math.max(highest, config.roadworkPoints[impact.severity]),
+    (highest, impact) =>
+      Math.max(highest, config.roadworkPoints[impact.severity]),
     0,
   );
 
@@ -182,7 +182,9 @@ export function assessRisk(
     });
   }
 
-  const eventImpacts = input.impacts.filter((impact) => impact.category === 'event');
+  const eventImpacts = input.impacts.filter(
+    (impact) => impact.category === 'event',
+  );
   const eventPoints = eventImpacts.reduce(
     (highest, impact) => Math.max(highest, config.eventPoints[impact.severity]),
     0,
@@ -268,11 +270,14 @@ function compareContributions(
   }
 
   return (
-    CONTRIBUTION_ORDER.indexOf(left.kind) - CONTRIBUTION_ORDER.indexOf(right.kind)
+    CONTRIBUTION_ORDER.indexOf(left.kind) -
+    CONTRIBUTION_ORDER.indexOf(right.kind)
   );
 }
 
-function highestNoticeSeverity(notices: ServiceNotice[]): ServiceNotice['severity'] {
+function highestNoticeSeverity(
+  notices: ServiceNotice[],
+): ServiceNotice['severity'] {
   if (notices.some((notice) => notice.severity === 'critical')) {
     return 'critical';
   }

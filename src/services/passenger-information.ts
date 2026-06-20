@@ -76,7 +76,9 @@ function boundedDraft(
   sentences: [string, string, string],
 ): PassengerInformationDraft {
   const [impactSentence, summarySentence, advisorySentence] = sentences;
-  const fullText = [impactSentence, summarySentence, advisorySentence].join(' ');
+  const fullText = [impactSentence, summarySentence, advisorySentence].join(
+    ' ',
+  );
 
   if (fullText.length <= limit) {
     return {
@@ -99,14 +101,18 @@ function boundedDraft(
       warnings: [
         {
           code: 'SUMMARY_TRUNCATED',
-          message: 'Optional travel advice was omitted to stay within the channel limit.',
+          message:
+            'Optional travel advice was omitted to stay within the channel limit.',
         },
       ],
     };
   }
 
   const availableSummaryLength = limit - impactSentence.length - 1;
-  const truncatedSummary = truncatePlainText(summarySentence, availableSummaryLength);
+  const truncatedSummary = truncatePlainText(
+    summarySentence,
+    availableSummaryLength,
+  );
   const text = [impactSentence, truncatedSummary].join(' ').slice(0, limit);
 
   return {
@@ -138,7 +144,11 @@ function sanitizeSummary(value: string): string {
 }
 
 function normalizeLineIds(lineIds: string[]): string[] {
-  const unique = [...new Set(lineIds.map((lineId) => normalizeWhitespace(lineId)).filter(Boolean))];
+  const unique = [
+    ...new Set(
+      lineIds.map((lineId) => normalizeWhitespace(lineId)).filter(Boolean),
+    ),
+  ];
 
   return unique.sort(compareLineIds);
 }

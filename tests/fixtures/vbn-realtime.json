@@ -26,10 +26,7 @@
           "RouteId": "1"
         },
         "Delay": 180,
-        "StopTimeUpdate": [
-          { "StopSequence": 1 },
-          { "StopSequence": 2 }
-        ]
+        "StopTimeUpdate": [{ "StopSequence": 1 }, { "StopSequence": 2 }]
       }
     },
     {
@@ -39,9 +36,7 @@
           "TripId": "trip-3",
           "RouteId": "1"
         },
-        "StopTimeUpdate": [
-          { "StopSequence": 1, "Arrival": { "Delay": 0 } }
-        ]
+        "StopTimeUpdate": [{ "StopSequence": 1, "Arrival": { "Delay": 0 } }]
       }
     },
     {
@@ -52,9 +47,7 @@
           "RouteId": "4",
           "ScheduleRelationship": "CANCELED"
         },
-        "StopTimeUpdate": [
-          { "StopSequence": 1 }
-        ]
+        "StopTimeUpdate": [{ "StopSequence": 1 }]
       }
     },
     {
@@ -75,9 +68,7 @@
         "Trip": {
           "TripId": "trip-bad"
         },
-        "StopTimeUpdate": [
-          { "StopSequence": 1 }
-        ]
+        "StopTimeUpdate": [{ "StopSequence": 1 }]
       }
     }
   ]

@@ -20,6 +20,28 @@ function buildRecord(
 }
 
 describe('summarizeLineHealth', () => {
+  it('uses default thresholds and returns clean metrics when coverage is complete', () => {
+    const health = summarizeLineHealth('4', '2026-06-20T06:05:00Z', [
+      buildRecord('4', 300),
+    ]);
+
+    expect(health).toMatchObject({
+      line_id: '4',
+      snapshot_at: '2026-06-20T06:05:00Z',
+      trip_count: 1,
+      observed_trip_count: 1,
+      coverage_ratio: 1,
+      average_delay_seconds: 300,
+      median_delay_seconds: 300,
+      p95_delay_seconds: 300,
+      max_delay_seconds: 300,
+      on_time_percentage: 100,
+      cancellations: 0,
+      skipped_stops: 0,
+      warnings: [],
+    });
+  });
+
   it('calculates metrics from usable delays only and reports low coverage with cancellations', () => {
     const health = summarizeLineHealth(
       '1',

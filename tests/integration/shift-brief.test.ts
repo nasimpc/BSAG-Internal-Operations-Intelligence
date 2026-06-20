@@ -7,6 +7,7 @@ import type {
   ServiceNotice,
 } from '../../src/domain/models.js';
 import { type SourceOutcome, warning } from '../../src/domain/result.js';
+import { InputError } from '../../src/shared/dates.js';
 import { assessRisk, DEFAULT_RISK_CONFIG } from '../../src/services/risk.js';
 import type { PassengerInformationDraft } from '../../src/services/passenger-information.js';
 import { ShiftBriefService } from '../../src/services/shift-brief.js';
@@ -90,17 +91,34 @@ class StubServiceNoticesService {
         },
       ],
       warnings: [
-        warning('bsag', 'NOTICE_SOURCE_PARTIAL', 'Some BSAG notices were incomplete', {
-          occurredAt: '2026-06-19T12:00:00Z',
-          retryable: false,
-        }),
+        warning(
+          'bsag',
+          'NOTICE_SOURCE_PARTIAL',
+          'Some BSAG notices were incomplete',
+          {
+            occurredAt: '2026-06-19T12:00:00Z',
+            retryable: false,
+          },
+        ),
       ],
     });
   }
 }
 
 class StubExternalImpactService {
-  get(): Promise<SourceOutcome<Array<ExternalImpact & { corridor_matches: Array<{ corridor_id: string; confidence: 'phrase'; matched_aliases: string[] }> }>>> {
+  get(): Promise<
+    SourceOutcome<
+      Array<
+        ExternalImpact & {
+          corridor_matches: Array<{
+            corridor_id: string;
+            confidence: 'phrase';
+            matched_aliases: string[];
+          }>;
+        }
+      >
+    >
+  > {
     return Promise.resolve({
       data: [
         {
@@ -182,7 +200,8 @@ describe('ShiftBriefService', () => {
         const draft: PassengerInformationDraft = {
           channel: input.channel,
           text: `${input.line_ids.join(', ')}: ${input.issue_summary}`,
-          character_count: `${input.line_ids.join(', ')}: ${input.issue_summary}`.length,
+          character_count:
+            `${input.line_ids.join(', ')}: ${input.issue_summary}`.length,
           manual_edit_required: false,
           warnings: [],
         };
@@ -207,10 +226,16 @@ describe('ShiftBriefService', () => {
       expect.arrayContaining(['10', '2', '3', '25', '29', '40', '41', '1E']),
     );
     expect(outcome.data.line_assessments[0]?.target_id).toBe('10');
-    expect(['high', 'severe']).toContain(outcome.data.line_assessments[0]?.band);
-    const overlap = outcome.data.overlaps.find((entry) => entry.line_id === '10');
+    expect(['high', 'severe']).toContain(
+      outcome.data.line_assessments[0]?.band,
+    );
+    const overlap = outcome.data.overlaps.find(
+      (entry) => entry.line_id === '10',
+    );
     expect(overlap).toBeDefined();
-    expect(overlap?.summary).toContain('realtime delays and VMZ roadworks overlap');
+    expect(overlap?.summary).toContain(
+      'realtime delays and VMZ roadworks overlap',
+    );
     expect(
       outcome.data.major_events.some(
         (event) => event.title === 'Weserpark summer concert',
@@ -224,5 +249,82 @@ describe('ShiftBriefService', () => {
     );
     expect(draftedMessages).toHaveLength(1);
     expect(draftedMessages[0]?.text).toContain('10');
+  });
+
+  it('defaults to all corridors and omits comms drafts when include_comms_draft is false', async () => {
+    const draftedMessages: PassengerInformationDraft[] = [];
+    const service = new ShiftBriefService({
+      assessRisk,
+      clock: new FixedClock('2026-06-19T12:00:00Z'),
+      corridors: [
+        {
+          id: 'custom',
+          aliases: ['Custom corridor'],
+          line_ids: [],
+        },
+      ],
+      externalImpactsService: new StubExternalImpactService(),
+      lineHealthService: new StubLineHealthService(),
+      passengerInformation: (input) => {
+        const draft: PassengerInformationDraft = {
+          channel: input.channel,
+          text: `${input.line_ids.join(', ')}: ${input.issue_summary}`,
+          character_count:
+            `${input.line_ids.join(', ')}: ${input.issue_summary}`.length,
+          manual_edit_required: false,
+          warnings: [],
+        };
+        draftedMessages.push(draft);
+
+        return draft;
+      },
+      riskConfig: DEFAULT_RISK_CONFIG,
+      serviceNoticesService: new StubServiceNoticesService(),
+    });
+
+    const outcome = await service.build({
+      date: '2026-06-20',
+    });
+
+    const untouchedCorridor = outcome.data.corridor_assessments.find(
+      (assessment) => assessment.target_id === 'custom',
+    );
+
+    expect(outcome.data.corridor_ids).toEqual(['custom']);
+    expect(outcome.data.communications).toEqual([]);
+    expect(draftedMessages).toEqual([]);
+    expect(untouchedCorridor).toMatchObject({
+      target_id: 'custom',
+      band: 'low',
+      confidence: 'low',
+      contributions: [],
+      warnings: [],
+    });
+  });
+
+  it('rejects unknown corridor IDs', async () => {
+    const service = new ShiftBriefService({
+      assessRisk,
+      clock: new FixedClock('2026-06-19T12:00:00Z'),
+      corridors: loadCorridors(`${process.cwd()}/config/corridors.json`),
+      externalImpactsService: new StubExternalImpactService(),
+      lineHealthService: new StubLineHealthService(),
+      passengerInformation: (input) => ({
+        channel: input.channel,
+        text: input.issue_summary,
+        character_count: input.issue_summary.length,
+        manual_edit_required: false,
+        warnings: [],
+      }),
+      riskConfig: DEFAULT_RISK_CONFIG,
+      serviceNoticesService: new StubServiceNoticesService(),
+    });
+
+    await expect(
+      service.build({
+        date: '2026-06-20',
+        corridors: ['unknown'],
+      }),
+    ).rejects.toBeInstanceOf(InputError);
   });
 });

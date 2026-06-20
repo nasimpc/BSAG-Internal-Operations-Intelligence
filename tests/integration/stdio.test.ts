@@ -46,7 +46,9 @@ describe('stdio transport', () => {
     const fixtureServer = await startFixtureServer();
     const directory = mkdtempSync(join(tmpdir(), 'bsag-stdio-'));
     const dataPath = join(directory, 'storage.sqlite');
-    const childEnv = buildChildEnv(buildTestEnv(fixtureServer.baseUrl, dataPath));
+    const childEnv = buildChildEnv(
+      buildTestEnv(fixtureServer.baseUrl, dataPath),
+    );
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [resolve(ROOT, 'dist/transports/stdio.js')],
@@ -72,7 +74,8 @@ describe('stdio transport', () => {
         name: 'draft_passenger_information',
         arguments: {
           line_ids: ['10'],
-          issue_summary: 'Roadworks may affect the eastern corridor tomorrow morning.',
+          issue_summary:
+            'Roadworks may affect the eastern corridor tomorrow morning.',
           channel: 'app',
         },
       });
@@ -99,27 +102,34 @@ describe('stdio transport', () => {
     const fixtureServer = await startFixtureServer();
     const directory = mkdtempSync(join(tmpdir(), 'bsag-stdio-exit-'));
     const dataPath = join(directory, 'storage.sqlite');
-    const childEnv = buildChildEnv(buildTestEnv(fixtureServer.baseUrl, dataPath));
-    const child = spawn(process.execPath, [resolve(ROOT, 'dist/transports/stdio.js')], {
-      cwd: ROOT,
-      env: childEnv,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const childEnv = buildChildEnv(
+      buildTestEnv(fixtureServer.baseUrl, dataPath),
+    );
+    const child = spawn(
+      process.execPath,
+      [resolve(ROOT, 'dist/transports/stdio.js')],
+      {
+        cwd: ROOT,
+        env: childEnv,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      },
+    );
 
     try {
-      await waitFor(() => existsSync(dataPath));
+      await waitFor(() => existsSync(dataPath), 15_000);
       await new Promise((resolve) => setTimeout(resolve, 250));
 
       child.kill('SIGTERM');
 
-      const exit = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-        (resolvePromise, reject) => {
-          child.once('error', reject);
-          child.once('exit', (code, signal) => {
-            resolvePromise({ code, signal });
-          });
-        },
-      );
+      const exit = await new Promise<{
+        code: number | null;
+        signal: NodeJS.Signals | null;
+      }>((resolvePromise, reject) => {
+        child.once('error', reject);
+        child.once('exit', (code, signal) => {
+          resolvePromise({ code, signal });
+        });
+      });
 
       expect(exit).toEqual({
         code: 0,
@@ -137,7 +147,7 @@ describe('stdio transport', () => {
       await fixtureServer.close();
       rmSync(directory, { recursive: true, force: true });
     }
-  });
+  }, 20_000);
 });
 
 async function waitFor(

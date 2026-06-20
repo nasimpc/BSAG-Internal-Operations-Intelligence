@@ -56,18 +56,20 @@ class StubRealtimeSource {
       await new Promise((resolve) => setTimeout(resolve, this.#latencyMs));
     }
 
-    return this.#outcomes.shift() ?? {
-      data: [],
-      sources: [
-        {
-          source: 'vbn_realtime',
-          fetched_at: '2026-06-20T06:05:00Z',
-          age_seconds: 0,
-          stale: false,
-        },
-      ],
-      warnings: [],
-    };
+    return (
+      this.#outcomes.shift() ?? {
+        data: [],
+        sources: [
+          {
+            source: 'vbn_realtime',
+            fetched_at: '2026-06-20T06:05:00Z',
+            age_seconds: 0,
+            stale: false,
+          },
+        ],
+        warnings: [],
+      }
+    );
   }
 }
 
@@ -223,9 +225,142 @@ describe('LineHealthService', () => {
     try {
       await expect(
         service.get({
-          line_ids: Array.from({ length: 101 }, (_, index) => String(index + 1)),
+          line_ids: Array.from({ length: 101 }, (_, index) =>
+            String(index + 1),
+          ),
         }),
       ).rejects.toThrow(/100/i);
+    } finally {
+      harness.close();
+    }
+  });
+
+  it('uses cached snapshots within the refresh interval and preserves non-usable stored delays', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-20T06:05:00Z');
+    const source = new StubRealtimeSource([
+      buildOutcome('2026-06-20T06:05:00Z', [
+        {
+          route_id: '4',
+          trip_id: 'trip-4',
+          observed_at: '2026-06-20T06:05:00Z',
+          delay_seconds: 180,
+          has_usable_delay: false,
+          schedule_relationship: 'scheduled',
+          update_count: 1,
+        },
+      ]),
+    ]);
+    const service = new LineHealthService({
+      clock,
+      repositories: harness.repositories,
+      retentionDays: 30,
+      refreshIntervalSeconds: 300,
+      source,
+    });
+
+    try {
+      const first = await service.get({ line_ids: ['4'] });
+
+      clock.set('2026-06-20T06:06:00Z');
+
+      const second = await service.get({ line_ids: ['4'] });
+
+      expect(source.callCount).toBe(1);
+      expect(first.data[0]).toMatchObject({
+        line_id: '4',
+        trip_count: 1,
+        observed_trip_count: 0,
+        coverage_ratio: 0,
+      });
+      expect(second.sources).toEqual([
+        expect.objectContaining({
+          source: 'vbn_realtime',
+          stale: false,
+          fetched_at: '2026-06-20T06:05:00.000Z',
+          age_seconds: 60,
+        }),
+      ]);
+      expect(second.warnings).toContainEqual(
+        expect.objectContaining({
+          source: 'vbn_realtime',
+          code: 'NO_USABLE_DELAYS',
+        }),
+      );
+    } finally {
+      harness.close();
+    }
+  });
+
+  it('uses the request time as the snapshot when a refresh returns no observations', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-20T06:05:00Z');
+    const source = new StubRealtimeSource([
+      {
+        data: [],
+        sources: [
+          {
+            source: 'vbn_realtime',
+            fetched_at: '2026-06-20T06:05:00Z',
+            age_seconds: 0,
+            stale: false,
+          },
+        ],
+        warnings: [],
+      },
+    ]);
+    const service = new LineHealthService({
+      clock,
+      repositories: harness.repositories,
+      retentionDays: 30,
+      refreshIntervalSeconds: 300,
+      source,
+    });
+
+    try {
+      const result = await service.get({ line_ids: ['7'] });
+
+      expect(source.callCount).toBe(1);
+      expect(result.data[0]).toMatchObject({
+        line_id: '7',
+        snapshot_at: '2026-06-20T06:05:00.000Z',
+        trip_count: 0,
+      });
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({
+          source: 'vbn_realtime',
+          code: 'NO_OBSERVATIONS',
+        }),
+      );
+    } finally {
+      harness.close();
+    }
+  });
+
+  it('rejects empty line ID requests and rethrows refresh failures when no cache exists', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-20T06:05:00Z');
+    const service = new LineHealthService({
+      clock,
+      repositories: harness.repositories,
+      retentionDays: 30,
+      refreshIntervalSeconds: 60,
+      source: {
+        fetch: () => Promise.reject(new Error('realtime unavailable')),
+      },
+    });
+
+    try {
+      await expect(
+        service.get({
+          line_ids: ['   ', ''],
+        }),
+      ).rejects.toThrow(/at least one non-empty line ID/i);
+      await expect(
+        service.get({
+          line_ids: ['1'],
+        }),
+      ).rejects.toThrow(/realtime unavailable/i);
     } finally {
       harness.close();
     }

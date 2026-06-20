@@ -106,7 +106,9 @@ export class VbnRealtimeSource {
     this.#client = options.client;
     this.#jsonUrl = new URL(options.jsonUrl);
     this.#protobufUrl =
-      options.protobufUrl === undefined ? undefined : new URL(options.protobufUrl);
+      options.protobufUrl === undefined
+        ? undefined
+        : new URL(options.protobufUrl);
     this.#clock = options.clock;
   }
 
@@ -114,11 +116,17 @@ export class VbnRealtimeSource {
     const fetchedAt = this.#clock.now().toISOString();
 
     try {
-      const response = await this.#client.getText(this.#jsonUrl, JSON_FETCH_POLICY);
+      const response = await this.#client.getText(
+        this.#jsonUrl,
+        JSON_FETCH_POLICY,
+      );
 
       return parseVbnRealtimeJson(response.body, fetchedAt);
     } catch (jsonError) {
-      if (this.#protobufUrl === undefined || !shouldFallbackToProtobuf(jsonError)) {
+      if (
+        this.#protobufUrl === undefined ||
+        !shouldFallbackToProtobuf(jsonError)
+      ) {
         throw jsonError;
       }
 
@@ -156,9 +164,13 @@ export function parseVbnRealtimeJson(
   try {
     parsed = JSON.parse(payload) as unknown;
   } catch (error) {
-    throw new VbnRealtimeParseError('JSON_PARSE_FAILED', 'Invalid realtime JSON', {
-      cause: error,
-    });
+    throw new VbnRealtimeParseError(
+      'JSON_PARSE_FAILED',
+      'Invalid realtime JSON',
+      {
+        cause: error,
+      },
+    );
   }
 
   return parseNormalizedFeed(normalizeKeys(parsed), fetchedAt);
@@ -182,14 +194,12 @@ export function decodeGtfsRealtime(
     );
   }
 
-  const plainObject = gtfsRealtimeBindings.transit_realtime.FeedMessage.toObject(
-    decoded,
-    {
+  const plainObject =
+    gtfsRealtimeBindings.transit_realtime.FeedMessage.toObject(decoded, {
       longs: Number,
       enums: String,
       defaults: false,
-    },
-  );
+    });
 
   return parseNormalizedFeed(normalizeKeys(plainObject), fetchedAt);
 }
@@ -208,15 +218,10 @@ function parseNormalizedFeed(
 
     if (!parsedEntity.ok) {
       warnings.push(
-        warning(
-          'vbn_realtime',
-          'PARSER_ENTITY_INVALID',
-          parsedEntity.message,
-          {
-            occurredAt: fetchedAt,
-            retryable: false,
-          },
-        ),
+        warning('vbn_realtime', 'PARSER_ENTITY_INVALID', parsedEntity.message, {
+          occurredAt: fetchedAt,
+          retryable: false,
+        }),
       );
       continue;
     }
@@ -240,14 +245,20 @@ function parseNormalizedFeed(
 
 function validateFeed(rawFeed: unknown): NormalizedFeed {
   if (!isObject(rawFeed)) {
-    throw new VbnRealtimeParseError('FEED_INVALID', 'Realtime feed must be an object');
+    throw new VbnRealtimeParseError(
+      'FEED_INVALID',
+      'Realtime feed must be an object',
+    );
   }
 
   const header = rawFeed.header;
   const entity = rawFeed.entity;
 
   if (!isObject(header)) {
-    throw new VbnRealtimeParseError('FEED_INVALID', 'Realtime feed header is missing');
+    throw new VbnRealtimeParseError(
+      'FEED_INVALID',
+      'Realtime feed header is missing',
+    );
   }
 
   if (!Array.isArray(entity)) {
@@ -268,9 +279,7 @@ function validateFeed(rawFeed: unknown): NormalizedFeed {
 
 function validateEntity(
   rawEntity: unknown,
-):
-  | { ok: true; entity: NormalizedEntity }
-  | { ok: false; message: string } {
+): { ok: true; entity: NormalizedEntity } | { ok: false; message: string } {
   if (!isObject(rawEntity)) {
     return { ok: false, message: 'Entity must be an object' };
   }
@@ -334,7 +343,9 @@ function normalizeStopTimeUpdate(rawUpdate: unknown): NormalizedStopTimeUpdate {
     ? rawUpdate.departure
     : undefined;
   const stopSequence = readOptionalScalar(rawUpdate.stopSequence);
-  const scheduleRelationship = readOptionalString(rawUpdate.scheduleRelationship);
+  const scheduleRelationship = readOptionalString(
+    rawUpdate.scheduleRelationship,
+  );
   const arrivalDelay =
     arrival === undefined ? undefined : readOptionalScalar(arrival.delay);
   const departureDelay =
@@ -455,9 +466,7 @@ function normalizeKeys(value: unknown): unknown {
 
   return Object.fromEntries(
     Object.entries(value).map(([key, nestedValue]) => [
-      key.length === 0
-        ? key
-        : key.slice(0, 1).toLowerCase() + key.slice(1),
+      key.length === 0 ? key : key.slice(0, 1).toLowerCase() + key.slice(1),
       normalizeKeys(nestedValue),
     ]),
   );
@@ -481,16 +490,14 @@ function toInteger(value: number | string | undefined): number | undefined {
     return Math.trunc(value);
   }
 
-  if (typeof value === 'string' && /^-?\\d+$/.test(value)) {
+  if (typeof value === 'string' && /^-?\d+$/u.test(value)) {
     return Number(value);
   }
 
   return undefined;
 }
 
-function readOptionalScalar(
-  value: unknown,
-): number | string | undefined {
+function readOptionalScalar(value: unknown): number | string | undefined {
   if (typeof value === 'number' || typeof value === 'string') {
     return value;
   }
@@ -504,7 +511,8 @@ function readOptionalString(value: unknown): string | undefined {
 
 function shouldFallbackToProtobuf(error: unknown): boolean {
   return (
-    error instanceof SourceHttpClientError || error instanceof VbnRealtimeParseError
+    error instanceof SourceHttpClientError ||
+    error instanceof VbnRealtimeParseError
   );
 }
 

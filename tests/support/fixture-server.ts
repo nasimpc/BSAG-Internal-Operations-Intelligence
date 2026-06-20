@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const ROOT = '/home/nasimpcm/Desktop/BSAG-MCP/.worktrees/bsag-briefing-server';
 
@@ -88,10 +88,14 @@ export async function startFixtureServer(): Promise<FixtureServer> {
   };
 }
 
-export function buildTestEnv(baseUrl: string, dataPath: string): Record<string, string> {
+export function buildTestEnv(
+  baseUrl: string,
+  dataPath: string,
+): Record<string, string> {
   return {
     TZ: 'Europe/Berlin',
     HTTP_HOST: '127.0.0.1',
+    BSAG_MCP_DATA_DIR: dirname(dataPath),
     DATA_PATH: dataPath,
     CORRIDORS_PATH: resolve(ROOT, 'config/corridors.json'),
     VBN_REALTIME_JSON_URL: `${baseUrl}/vbn-realtime.json`,

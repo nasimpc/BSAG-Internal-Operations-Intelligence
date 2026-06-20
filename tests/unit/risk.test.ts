@@ -66,7 +66,9 @@ function buildImpact(overrides: Partial<ExternalImpact> = {}): ExternalImpact {
   };
 }
 
-function buildSourceStatus(overrides: Partial<SourceStatus> = {}): SourceStatus {
+function buildSourceStatus(
+  overrides: Partial<SourceStatus> = {},
+): SourceStatus {
   return {
     source: 'vbn_realtime',
     stale: false,
@@ -132,13 +134,27 @@ describe('assessRisk', () => {
     expect(assessment.score).toBe(100);
     expect(assessment.band).toBe('severe');
     expect(assessment.confidence).toBe('high');
-    expect(assessment.contributions.find((item) => item.kind === 'delay')?.points).toBe(30);
-    expect(assessment.contributions.find((item) => item.kind === 'on_time')?.points).toBe(15);
-    expect(assessment.contributions.find((item) => item.kind === 'coverage')?.points).toBe(5);
-    expect(assessment.contributions.find((item) => item.kind === 'notice')?.points).toBe(25);
-    expect(assessment.contributions.find((item) => item.kind === 'roadwork')?.points).toBe(20);
-    expect(assessment.contributions.find((item) => item.kind === 'event')?.points).toBe(10);
-    expect(assessment.contributions.find((item) => item.kind === 'overlap')?.points).toBe(10);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'delay')?.points,
+    ).toBe(30);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'on_time')?.points,
+    ).toBe(15);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'coverage')?.points,
+    ).toBe(5);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'notice')?.points,
+    ).toBe(25);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'roadwork')?.points,
+    ).toBe(20);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'event')?.points,
+    ).toBe(10);
+    expect(
+      assessment.contributions.find((item) => item.kind === 'overlap')?.points,
+    ).toBe(10);
     expect(typeof assessment.contributions[0]?.kind).toBe('string');
     expect(typeof assessment.contributions[0]?.points).toBe('number');
     expect(typeof assessment.contributions[0]?.reason).toBe('string');
@@ -171,7 +187,9 @@ describe('assessRisk', () => {
     expect(assessment.band).toBe('low');
     expect(assessment.confidence).toBe('low');
     expect(
-      assessment.contributions.some((contribution) => contribution.kind === 'delay'),
+      assessment.contributions.some(
+        (contribution) => contribution.kind === 'delay',
+      ),
     ).toBe(false);
     expect(assessment.warnings).toContainEqual(
       expect.objectContaining({

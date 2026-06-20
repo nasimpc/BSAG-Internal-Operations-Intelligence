@@ -77,7 +77,10 @@ export function createHttpApp(options: HttpTransportOptions): Express {
   });
 
   app.post('/mcp', (request, response, next) => {
-    if (bearerToken !== undefined && !hasValidBearerToken(request.get('authorization'), bearerToken)) {
+    if (
+      bearerToken !== undefined &&
+      !hasValidBearerToken(request.get('authorization'), bearerToken)
+    ) {
       response
         .status(401)
         .set('www-authenticate', 'Bearer')
@@ -97,11 +100,11 @@ export function createHttpApp(options: HttpTransportOptions): Express {
 
   app.post('/mcp', async (request, response) => {
     const server = options.application.createMcpServer();
-    const transport = new StreamableHTTPServerTransport(
-      {
-        sessionIdGenerator: undefined,
-      } as unknown as ConstructorParameters<typeof StreamableHTTPServerTransport>[0],
-    );
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+    } as unknown as ConstructorParameters<
+      typeof StreamableHTTPServerTransport
+    >[0]);
     const cleanup = once(async () => {
       await Promise.allSettled([transport.close(), server.close()]);
     });
@@ -179,7 +182,8 @@ async function main(): Promise<void> {
   try {
     await runHttpServer();
   } catch (error) {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    const message =
+      error instanceof Error ? (error.stack ?? error.message) : String(error);
     process.stderr.write(`${message}\n`);
     process.exit(1);
   }
@@ -204,18 +208,16 @@ function isOriginAllowed(
   try {
     const parsed = new URL(origin);
     const originHost = parsed.hostname.toLowerCase();
-    const allowedHosts = new Set<string>(
-      [
-        ...configuredAllowedOrigins.map((value) => {
-          try {
-            return new URL(value).hostname.toLowerCase();
-          } catch {
-            return value.toLowerCase();
-          }
-        }),
-        host.toLowerCase(),
-      ],
-    );
+    const allowedHosts = new Set<string>([
+      ...configuredAllowedOrigins.map((value) => {
+        try {
+          return new URL(value).hostname.toLowerCase();
+        } catch {
+          return value.toLowerCase();
+        }
+      }),
+      host.toLowerCase(),
+    ]);
 
     if (LOOPBACK_HOSTS.has(host)) {
       allowedHosts.add('127.0.0.1');
@@ -233,7 +235,10 @@ function hasValidBearerToken(
   authorizationHeader: string | undefined,
   expectedToken: string,
 ): boolean {
-  if (authorizationHeader === undefined || !authorizationHeader.startsWith('Bearer ')) {
+  if (
+    authorizationHeader === undefined ||
+    !authorizationHeader.startsWith('Bearer ')
+  ) {
     return false;
   }
 
@@ -319,7 +324,10 @@ function once<T>(callback: () => Promise<T>): () => Promise<T> {
   };
 }
 
-function installShutdown(server: Server, application: Application): {
+function installShutdown(
+  server: Server,
+  application: Application,
+): {
   dispose(): void;
 } {
   let closed = false;

@@ -24,9 +24,12 @@ export function presentToolEnvelope<T>(
     options.summary.join('\n'),
     formatSourceSection(options.envelope.sources),
     formatWarningsSection(options.envelope.warnings),
-    ['Structured data fallback:', '```json', JSON.stringify(options.envelope, null, 2), '```'].join(
-      '\n',
-    ),
+    [
+      'Structured data fallback:',
+      '```json',
+      JSON.stringify(options.envelope, null, 2),
+      '```',
+    ].join('\n'),
   ].filter((section) => section.trim().length > 0);
 
   return {
@@ -42,9 +45,10 @@ export function presentToolEnvelope<T>(
 
 function formatSourceSection(sources: readonly SourceStatus[]): string {
   if (sources.length === 0) {
-    return ['Source freshness', '- No external source timestamps were reported.'].join(
-      '\n',
-    );
+    return [
+      'Source freshness',
+      '- No external source timestamps were reported.',
+    ].join('\n');
   }
 
   return [

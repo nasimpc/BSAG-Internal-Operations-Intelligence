@@ -1,8 +1,17 @@
 import type { Corridor, CorridorMatch } from '../config/corridors.js';
 import { matchCorridor } from '../config/corridors.js';
-import type { ExternalImpact, SourceId, SourceWarning } from '../domain/models.js';
+import type {
+  ExternalImpact,
+  SourceId,
+  SourceWarning,
+} from '../domain/models.js';
 import { type SourceOutcome, warning } from '../domain/result.js';
-import { type TimeInterval, InputError, intervalsOverlap, parseBerlinRange } from '../shared/dates.js';
+import {
+  type TimeInterval,
+  InputError,
+  intervalsOverlap,
+  parseBerlinRange,
+} from '../shared/dates.js';
 import type { Clock } from '../shared/clock.js';
 import type { DatabaseRepositories } from '../storage/repositories.js';
 
@@ -76,7 +85,12 @@ export class ExternalImpactService {
       }
 
       if (refresh.status === 'fulfilled') {
-        persistOutcome(this.#repositories, refresh.value.outcome, source.sourceIds, now);
+        persistOutcome(
+          this.#repositories,
+          refresh.value.outcome,
+          source.sourceIds,
+          now,
+        );
         impacts.push(...refresh.value.outcome.data);
         sourceStatuses.push(...refresh.value.outcome.sources);
         warnings.push(...refresh.value.outcome.warnings);
@@ -131,7 +145,9 @@ function resolveRequestedCorridors(
   }
 
   return requestedIds.map((requestedId) => {
-    const corridor = allCorridors.find((candidate) => candidate.id === requestedId);
+    const corridor = allCorridors.find(
+      (candidate) => candidate.id === requestedId,
+    );
 
     if (corridor === undefined) {
       throw new InputError(`Unknown corridor "${requestedId}"`);
@@ -163,7 +179,8 @@ function persistOutcome(
 
   for (const sourceId of sourceIds) {
     const sourceFetchedAt =
-      outcome.sources.find((status) => status.source === sourceId)?.fetched_at ?? now;
+      outcome.sources.find((status) => status.source === sourceId)
+        ?.fetched_at ?? now;
 
     repositories.externalImpacts.replaceForSource(
       sourceId,
@@ -211,7 +228,9 @@ function buildCachedFallback(
       Math.floor((Date.parse(now) - Date.parse(sourceState.fetchedAt)) / 1000),
     );
 
-    data.push(...cached.filter((impact) => impact.provenance.source === sourceId));
+    data.push(
+      ...cached.filter((impact) => impact.provenance.source === sourceId),
+    );
     sources.push({
       source: sourceId,
       fetched_at: sourceState.fetchedAt,
@@ -242,7 +261,9 @@ function findCorridorMatches(
   impact: ExternalImpact,
 ): CorridorMatch[] {
   const corridorsToCheck =
-    requestedCorridors.length === allCorridors.length ? allCorridors : requestedCorridors;
+    requestedCorridors.length === allCorridors.length
+      ? allCorridors
+      : requestedCorridors;
 
   return corridorsToCheck
     .map((corridor) =>
@@ -255,15 +276,26 @@ function findCorridorMatches(
     .filter((match): match is CorridorMatch => match !== undefined);
 }
 
-function overlapsRange(impact: ExternalImpact, interval: TimeInterval): boolean {
+function overlapsRange(
+  impact: ExternalImpact,
+  interval: TimeInterval,
+): boolean {
   const impactInterval = impactToInterval(impact);
 
   return intervalsOverlap(interval, impactInterval);
 }
 
 function impactToInterval(impact: ExternalImpact): TimeInterval {
-  const start = impact.starts_at ?? impact.ends_at ?? impact.provenance.publishedAt ?? impact.provenance.fetchedAt;
-  const end = impact.ends_at ?? impact.starts_at ?? impact.provenance.publishedAt ?? impact.provenance.fetchedAt;
+  const start =
+    impact.starts_at ??
+    impact.ends_at ??
+    impact.provenance.publishedAt ??
+    impact.provenance.fetchedAt;
+  const end =
+    impact.ends_at ??
+    impact.starts_at ??
+    impact.provenance.publishedAt ??
+    impact.provenance.fetchedAt;
 
   return {
     start: new Date(start),
@@ -278,7 +310,11 @@ function deduplicateImpacts(impacts: ExternalImpact[]): ExternalImpact[] {
     const key = dedupeKey(impact);
     const existing = deduplicated.get(key);
 
-    if (existing === undefined || sourcePriority(impact.provenance.source) < sourcePriority(existing.provenance.source)) {
+    if (
+      existing === undefined ||
+      sourcePriority(impact.provenance.source) <
+        sourcePriority(existing.provenance.source)
+    ) {
       deduplicated.set(key, impact);
     }
   }
@@ -323,7 +359,8 @@ function compareMatchedImpacts(
   }
 
   const leftStart = left.starts_at ?? left.ends_at ?? left.provenance.fetchedAt;
-  const rightStart = right.starts_at ?? right.ends_at ?? right.provenance.fetchedAt;
+  const rightStart =
+    right.starts_at ?? right.ends_at ?? right.provenance.fetchedAt;
 
   return Date.parse(leftStart) - Date.parse(rightStart);
 }

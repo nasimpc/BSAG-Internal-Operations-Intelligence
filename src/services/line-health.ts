@@ -1,9 +1,7 @@
 import type { DelayObservation, LineHealth } from '../domain/models.js';
 import { type SourceOutcome, warning } from '../domain/result.js';
 import type { Clock } from '../shared/clock.js';
-import type {
-  DatabaseRepositories,
-} from '../storage/repositories.js';
+import type { DatabaseRepositories } from '../storage/repositories.js';
 import type { VbnRealtimeRecord } from '../sources/vbn-realtime.js';
 
 const MAX_LINE_IDS = 100;
@@ -245,16 +243,13 @@ export function summarizeLineHealth(
   };
   const usableDelays = records
     .filter(
-      (
-        record,
-      ): record is VbnRealtimeRecord & { delay_seconds: number } =>
+      (record): record is VbnRealtimeRecord & { delay_seconds: number } =>
         record.has_usable_delay && record.delay_seconds !== undefined,
     )
     .map((record) => record.delay_seconds);
   const tripCount = records.length;
   const observedTripCount = usableDelays.length;
-  const coverageRatio =
-    tripCount === 0 ? 0 : observedTripCount / tripCount;
+  const coverageRatio = tripCount === 0 ? 0 : observedTripCount / tripCount;
   const cancellations = records.filter(
     (record) => record.schedule_relationship === 'canceled',
   ).length;
@@ -365,7 +360,9 @@ function observationFromRecord(
   };
 }
 
-function recordFromObservation(observation: DelayObservation): VbnRealtimeRecord {
+function recordFromObservation(
+  observation: DelayObservation,
+): VbnRealtimeRecord {
   return {
     route_id: observation.line_id,
     ...(observation.entity_id === undefined
@@ -381,8 +378,7 @@ function recordFromObservation(observation: DelayObservation): VbnRealtimeRecord
         ? { delay_seconds: observation.delay_seconds }
         : {}),
     has_usable_delay: observation.has_usable_delay ?? true,
-    schedule_relationship:
-      observation.schedule_relationship ?? 'scheduled',
+    schedule_relationship: observation.schedule_relationship ?? 'scheduled',
     update_count: observation.update_count ?? 1,
   };
 }
@@ -483,15 +479,17 @@ function onTimePercentage(
 
   const onTimeCount = delays.filter(
     (delay) =>
-      delay <= onTimeThresholdSeconds &&
-      delay >= -earlyRunningThresholdSeconds,
+      delay <= onTimeThresholdSeconds && delay >= -earlyRunningThresholdSeconds,
   ).length;
 
   return (onTimeCount / delays.length) * 100;
 }
 
 function ageSeconds(earlierIso: string, laterIso: string): number {
-  return Math.max(0, Math.floor((Date.parse(laterIso) - Date.parse(earlierIso)) / 1000));
+  return Math.max(
+    0,
+    Math.floor((Date.parse(laterIso) - Date.parse(earlierIso)) / 1000),
+  );
 }
 
 function describeError(error: unknown): string {

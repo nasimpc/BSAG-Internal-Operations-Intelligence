@@ -276,7 +276,11 @@ const buildShiftBriefInputSchema = z
 
 const draftPassengerInformationInputSchema = z
   .object({
-    line_ids: z.array(nonEmptyStringSchema).min(1).max(50).transform(dedupeStrings),
+    line_ids: z
+      .array(nonEmptyStringSchema)
+      .min(1)
+      .max(50)
+      .transform(dedupeStrings),
     issue_summary: z.string().trim().min(1).max(2_000),
     channel: z.enum(['app', 'web', 'stop']),
   })
@@ -300,7 +304,9 @@ export interface OperationsBriefingMcpServerOptions {
     input: DraftPassengerInformationInput,
   ): PassengerInformationDraft;
   externalImpactsService: {
-    get(input: GetExternalImpactsInput): Promise<SourceOutcome<MatchedExternalImpact[]>>;
+    get(
+      input: GetExternalImpactsInput,
+    ): Promise<SourceOutcome<MatchedExternalImpact[]>>;
   };
   lineHealthService: {
     get(input: GetLineHealthInput): Promise<SourceOutcome<LineHealth[]>>;

@@ -321,7 +321,10 @@ describe('ServiceNoticeService', () => {
       expect(tracker.maxActive).toBe(2);
       expect(bsagSource.callCount).toBe(1);
       expect(vbnSource.callCount).toBe(1);
-      expect(result.data.map((notice) => notice.id)).toEqual(['vbn-8', 'bsag-6']);
+      expect(result.data.map((notice) => notice.id)).toEqual([
+        'vbn-8',
+        'bsag-6',
+      ]);
       expect(result.data.map((notice) => notice.provenance.source)).toEqual([
         'vbn_notices',
         'bsag',
@@ -439,7 +442,9 @@ describe('ServiceNoticeService', () => {
         ]),
       );
       expect(
-        second.warnings.filter((warningItem) => warningItem.code === 'SOURCE_REFRESH_FAILED'),
+        second.warnings.filter(
+          (warningItem) => warningItem.code === 'SOURCE_REFRESH_FAILED',
+        ),
       ).toHaveLength(2);
       expect(second.warnings).toEqual(
         expect.arrayContaining([

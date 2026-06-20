@@ -30,7 +30,9 @@ const roadworksTextFixture = readFileSync(
 const rssUrl = new URL('https://vmz.bremen.de/verkehrslage/aktuell/feed.rss');
 const currentUrl = new URL('https://vmz.bremen.de/baustellen/aktuell');
 const previewUrl = new URL('https://vmz.bremen.de/baustellen/vorschau');
-const overviewUrl = new URL('https://vmz.bremen.de/baustellen/baustellenuebersicht');
+const overviewUrl = new URL(
+  'https://vmz.bremen.de/baustellen/baustellenuebersicht',
+);
 const fetchedAt = '2026-06-20T05:00:00Z';
 
 interface StubClock {

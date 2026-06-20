@@ -9,54 +9,28 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { loadCorridors } from './config/corridors.js';
 import { loadEnv, type EnvConfig } from './config/env.js';
 import { logger as defaultLogger } from './shared/logger.js';
-import {
-  type Clock,
-  SystemClock,
-} from './shared/clock.js';
+import { type Clock, SystemClock } from './shared/clock.js';
 import { openDatabase } from './storage/database.js';
-import {
-  createRepositories,
-} from './storage/repositories.js';
+import { createRepositories } from './storage/repositories.js';
 import {
   SourceHttpClient,
   type TextFetchPolicy,
 } from './sources/http-client.js';
-import {
-  parseVbnNoticesHtml,
-} from './sources/vbn-notices.js';
-import {
-  parseBsagNoticesHtml,
-} from './sources/bsag-notices.js';
+import { parseVbnNoticesHtml } from './sources/vbn-notices.js';
+import { parseBsagNoticesHtml } from './sources/bsag-notices.js';
 import { VbnRealtimeSource } from './sources/vbn-realtime.js';
 import { VmzSource } from './sources/vmz.js';
 import { parseBremenEventsHtml } from './sources/bremen-events.js';
-import {
-  LineHealthService,
-} from './services/line-health.js';
-import {
-  ServiceNoticeService,
-} from './services/service-notices.js';
-import {
-  ExternalImpactService,
-} from './services/external-impacts.js';
-import {
-  ShiftBriefService,
-} from './services/shift-brief.js';
-import {
-  assessRisk,
-  DEFAULT_RISK_CONFIG,
-} from './services/risk.js';
-import {
-  draftPassengerInformation,
-} from './services/passenger-information.js';
+import { LineHealthService } from './services/line-health.js';
+import { ServiceNoticeService } from './services/service-notices.js';
+import { ExternalImpactService } from './services/external-impacts.js';
+import { ShiftBriefService } from './services/shift-brief.js';
+import { assessRisk, DEFAULT_RISK_CONFIG } from './services/risk.js';
+import { draftPassengerInformation } from './services/passenger-information.js';
 import { createOperationsBriefingMcpServer } from './mcp/server.js';
 
 const HTML_FETCH_POLICY: TextFetchPolicy = {
-  expectedTypes: [
-    'application/xhtml+xml',
-    'text/html',
-    'text/plain',
-  ],
+  expectedTypes: ['application/xhtml+xml', 'text/html', 'text/plain'],
   maxBytes: 2_000_000,
   timeoutMs: 10_000,
 };
@@ -65,7 +39,8 @@ const runtimeEnvSchema = z.object({
   HTTP_PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   HTTP_BEARER_TOKEN: z.string().trim().min(1).optional(),
   HTTP_ALLOWED_ORIGINS: z.string().optional(),
-  DATA_PATH: z.string().trim().min(1).default(join(process.cwd(), 'data', 'bsag.sqlite')),
+  DATA_PATH: z.string().trim().min(1).optional(),
+  BSAG_MCP_DATA_DIR: z.string().trim().min(1).optional(),
   CORRIDORS_PATH: z
     .string()
     .trim()
@@ -114,7 +89,9 @@ interface RuntimeEnvConfig {
   corridorsPath: string;
 }
 
-export function createApplication(options: ApplicationOptions = {}): Application {
+export function createApplication(
+  options: ApplicationOptions = {},
+): Application {
   const envInput = options.env ?? process.env;
   const coreConfig = loadEnv(envInput);
   const runtimeConfig = loadRuntimeEnv(envInput, options);
@@ -283,7 +260,12 @@ function loadRuntimeEnv(
       ? {}
       : { httpBearerToken: parsed.HTTP_BEARER_TOKEN }),
     httpAllowedOrigins: splitOrigins(parsed.HTTP_ALLOWED_ORIGINS),
-    dataPath: options.dataPath ?? parsed.DATA_PATH,
+    dataPath:
+      options.dataPath ??
+      parsed.DATA_PATH ??
+      (parsed.BSAG_MCP_DATA_DIR === undefined
+        ? join(process.cwd(), 'data', 'bsag.sqlite')
+        : join(parsed.BSAG_MCP_DATA_DIR, 'bsag.sqlite')),
     corridorsPath: options.corridorsPath ?? parsed.CORRIDORS_PATH,
   };
 }

@@ -10,13 +10,9 @@ import type {
   GetExternalImpactsInput,
   MatchedExternalImpact,
 } from '../../src/services/external-impacts.js';
-import type {
-  GetLineHealthInput,
-} from '../../src/services/line-health.js';
+import type { GetLineHealthInput } from '../../src/services/line-health.js';
 import { createOperationsBriefingMcpServer } from '../../src/mcp/server.js';
-import type {
-  GetServiceNoticesInput,
-} from '../../src/services/service-notices.js';
+import type { GetServiceNoticesInput } from '../../src/services/service-notices.js';
 import type {
   ShiftBrief,
   ShiftBriefBuildInput,
@@ -43,9 +39,7 @@ function textContent(result: unknown): string {
       ? (result.content as unknown[])
       : undefined;
 
-  if (
-    content === undefined
-  ) {
+  if (content === undefined) {
     return '';
   }
 
@@ -118,7 +112,8 @@ async function createHarness(): Promise<Harness> {
       {
         id: 'vmz-impact-1',
         title: 'Roadworks near Weserpark',
-        summary: 'Lane restrictions may slow buses near Osterholzer Heerstraße.',
+        summary:
+          'Lane restrictions may slow buses near Osterholzer Heerstraße.',
         details: 'Osterholzer Heerstraße by Weserpark',
         corridor_ids: ['east'],
         starts_at: '2026-06-21T04:00:00.000Z',
@@ -236,7 +231,8 @@ async function createHarness(): Promise<Harness> {
             {
               kind: 'overlap',
               points: 15,
-              reason: 'Realtime delay and VMZ roadworks overlap in the corridor.',
+              reason:
+                'Realtime delay and VMZ roadworks overlap in the corridor.',
             },
           ],
           confidence: 'medium',
@@ -252,9 +248,7 @@ async function createHarness(): Promise<Harness> {
         },
       ],
       communications: [],
-      operational_actions: [
-        'Prepare operational messaging for line 10.',
-      ],
+      operational_actions: ['Prepare operational messaging for line 10.'],
     },
     sources: [
       {

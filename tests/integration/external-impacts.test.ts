@@ -5,10 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { loadCorridors } from '../../src/config/corridors.js';
-import type {
-  ExternalImpact,
-  SourceId,
-} from '../../src/domain/models.js';
+import type { ExternalImpact, SourceId } from '../../src/domain/models.js';
 import { type SourceOutcome } from '../../src/domain/result.js';
 import { InputError } from '../../src/shared/dates.js';
 import { openDatabase } from '../../src/storage/database.js';
@@ -169,64 +166,70 @@ describe('ExternalImpactService', () => {
     const vmzSource = new StubImpactSource(
       ['vmz_pdf', 'vmz_web', 'vmz_rss'],
       [
-        buildOutcome(['vmz_pdf', 'vmz_web', 'vmz_rss'], [
-          buildImpact('vmz_pdf', 'vmz-east-1', {
-            title: 'Steubenstraße — Vollsperrung',
-            summary: 'Peterswerder road closure at the corridor boundary',
-            details: 'Peterswerder',
-            starts_at: '2026-06-19T20:00:00.000Z',
-            ends_at: '2026-06-19T22:00:00.000Z',
-            category: 'roadworks',
-            severity: 'high',
-            provenance: {
-              source: 'vmz_pdf',
-              sourceUrl: 'https://example.test/vmz/steubenstrasse',
-              fetchedAt: '2026-06-20T05:00:00Z',
-              contentHash: 'hash-vmz-east-1',
-            },
-          }),
-          buildImpact('vmz_web', 'vmz-east-duplicate', {
-            title: 'Steubenstrasse Vollsperrung',
-            summary: 'Peterswerder road closure at the corridor boundary',
-            details: 'Peterswerder',
-            starts_at: '2026-06-19T20:00:00.000Z',
-            ends_at: '2026-06-19T22:00:00.000Z',
-            category: 'roadworks',
-            severity: 'high',
-            provenance: {
-              source: 'vmz_web',
-              sourceUrl: 'https://example.test/vmz/steubenstrasse-web',
-              fetchedAt: '2026-06-20T05:00:00Z',
-              contentHash: 'hash-vmz-east-duplicate',
-            },
-          }),
-          buildImpact('vmz_rss', 'vmz-west', {
-            title: 'Use Akschen lane closure',
-            summary: 'Walle disruption',
-            details: 'Walle',
-            starts_at: '2026-06-20T08:00:00.000Z',
-            ends_at: '2026-06-20T10:00:00.000Z',
-            category: 'incident',
-            severity: 'moderate',
-          }),
-        ]),
+        buildOutcome(
+          ['vmz_pdf', 'vmz_web', 'vmz_rss'],
+          [
+            buildImpact('vmz_pdf', 'vmz-east-1', {
+              title: 'Steubenstraße — Vollsperrung',
+              summary: 'Peterswerder road closure at the corridor boundary',
+              details: 'Peterswerder',
+              starts_at: '2026-06-19T20:00:00.000Z',
+              ends_at: '2026-06-19T22:00:00.000Z',
+              category: 'roadworks',
+              severity: 'high',
+              provenance: {
+                source: 'vmz_pdf',
+                sourceUrl: 'https://example.test/vmz/steubenstrasse',
+                fetchedAt: '2026-06-20T05:00:00Z',
+                contentHash: 'hash-vmz-east-1',
+              },
+            }),
+            buildImpact('vmz_web', 'vmz-east-duplicate', {
+              title: 'Steubenstrasse Vollsperrung',
+              summary: 'Peterswerder road closure at the corridor boundary',
+              details: 'Peterswerder',
+              starts_at: '2026-06-19T20:00:00.000Z',
+              ends_at: '2026-06-19T22:00:00.000Z',
+              category: 'roadworks',
+              severity: 'high',
+              provenance: {
+                source: 'vmz_web',
+                sourceUrl: 'https://example.test/vmz/steubenstrasse-web',
+                fetchedAt: '2026-06-20T05:00:00Z',
+                contentHash: 'hash-vmz-east-duplicate',
+              },
+            }),
+            buildImpact('vmz_rss', 'vmz-west', {
+              title: 'Use Akschen lane closure',
+              summary: 'Walle disruption',
+              details: 'Walle',
+              starts_at: '2026-06-20T08:00:00.000Z',
+              ends_at: '2026-06-20T10:00:00.000Z',
+              category: 'incident',
+              severity: 'moderate',
+            }),
+          ],
+        ),
       ],
       { latencyMs: 20, tracker },
     );
     const eventsSource = new StubImpactSource(
       ['bremen_events'],
       [
-        buildOutcome(['bremen_events'], [
-          buildImpact('bremen_events', 'event-east', {
-            title: 'Weserpark summer concert',
-            summary: 'Major concert at Weserpark',
-            details: 'Weserpark',
-            starts_at: '2026-06-20T16:00:00.000Z',
-            ends_at: '2026-06-20T20:00:00.000Z',
-            category: 'event',
-            severity: 'low',
-          }),
-        ]),
+        buildOutcome(
+          ['bremen_events'],
+          [
+            buildImpact('bremen_events', 'event-east', {
+              title: 'Weserpark summer concert',
+              summary: 'Major concert at Weserpark',
+              details: 'Weserpark',
+              starts_at: '2026-06-20T16:00:00.000Z',
+              ends_at: '2026-06-20T20:00:00.000Z',
+              category: 'event',
+              severity: 'low',
+            }),
+          ],
+        ),
       ],
       { latencyMs: 20, tracker },
     );
@@ -281,45 +284,54 @@ describe('ExternalImpactService', () => {
     const vmzSource = new StubImpactSource(
       ['vmz_pdf', 'vmz_web', 'vmz_rss'],
       [
-        buildOutcome(['vmz_pdf', 'vmz_web', 'vmz_rss'], [
-          buildImpact('vmz_pdf', 'vmz-cached', {
-            title: 'Steubenstraße — Vollsperrung',
-            summary: 'Peterswerder road closure',
-            details: 'Peterswerder',
-            starts_at: '2026-06-20T06:00:00.000Z',
-            ends_at: '2026-06-20T10:00:00.000Z',
-            category: 'roadworks',
-            severity: 'high',
-          }),
-        ]),
+        buildOutcome(
+          ['vmz_pdf', 'vmz_web', 'vmz_rss'],
+          [
+            buildImpact('vmz_pdf', 'vmz-cached', {
+              title: 'Steubenstraße — Vollsperrung',
+              summary: 'Peterswerder road closure',
+              details: 'Peterswerder',
+              starts_at: '2026-06-20T06:00:00.000Z',
+              ends_at: '2026-06-20T10:00:00.000Z',
+              category: 'roadworks',
+              severity: 'high',
+            }),
+          ],
+        ),
         new Error('vmz source offline'),
       ],
     );
     const eventsSource = new StubImpactSource(
       ['bremen_events'],
       [
-        buildOutcome(['bremen_events'], [
-          buildImpact('bremen_events', 'event-cached', {
-            title: 'Weserpark concert',
-            summary: 'Event at Weserpark',
-            details: 'Weserpark',
-            starts_at: '2026-06-20T18:00:00.000Z',
-            ends_at: '2026-06-20T20:00:00.000Z',
-            category: 'event',
-            severity: 'low',
-          }),
-        ]),
-        buildOutcome(['bremen_events'], [
-          buildImpact('bremen_events', 'event-cached', {
-            title: 'Weserpark concert',
-            summary: 'Event at Weserpark',
-            details: 'Weserpark',
-            starts_at: '2026-06-20T18:00:00.000Z',
-            ends_at: '2026-06-20T20:00:00.000Z',
-            category: 'event',
-            severity: 'low',
-          }),
-        ]),
+        buildOutcome(
+          ['bremen_events'],
+          [
+            buildImpact('bremen_events', 'event-cached', {
+              title: 'Weserpark concert',
+              summary: 'Event at Weserpark',
+              details: 'Weserpark',
+              starts_at: '2026-06-20T18:00:00.000Z',
+              ends_at: '2026-06-20T20:00:00.000Z',
+              category: 'event',
+              severity: 'low',
+            }),
+          ],
+        ),
+        buildOutcome(
+          ['bremen_events'],
+          [
+            buildImpact('bremen_events', 'event-cached', {
+              title: 'Weserpark concert',
+              summary: 'Event at Weserpark',
+              details: 'Weserpark',
+              starts_at: '2026-06-20T18:00:00.000Z',
+              ends_at: '2026-06-20T20:00:00.000Z',
+              category: 'event',
+              severity: 'low',
+            }),
+          ],
+        ),
       ],
     );
     const service = new ExternalImpactService({

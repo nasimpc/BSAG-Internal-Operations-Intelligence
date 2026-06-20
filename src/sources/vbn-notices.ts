@@ -51,16 +51,15 @@ export function parseVbnNoticesHtml(
       continue;
     }
 
-    const absoluteUrl = new URL(link.attr('href') ?? sourceUrl.toString(), sourceUrl);
+    const absoluteUrl = new URL(
+      link.attr('href') ?? sourceUrl.toString(),
+      sourceUrl,
+    );
     const stopNames = splitStops(stopText);
     const contentHash = sha256Text(
-      [
-        title,
-        summary,
-        durationText,
-        lines.join(','),
-        stopNames.join(','),
-      ].join('|'),
+      [title, summary, durationText, lines.join(','), stopNames.join(',')].join(
+        '|',
+      ),
     );
 
     notices.push({

@@ -199,7 +199,9 @@ export class StorageValidationError extends Error {
   }
 }
 
-export function createRepositories(handle: DatabaseHandle): DatabaseRepositories {
+export function createRepositories(
+  handle: DatabaseHandle,
+): DatabaseRepositories {
   const sourceState = new SqliteSourceStateRepository(handle.connection);
 
   return {
@@ -376,7 +378,10 @@ class SqliteRealtimeRepository implements RealtimeRepository {
         observations: DelayObservation[],
       ) => {
         this.#upsertSnapshotStatement.run(source, snapshotAt, fetchedAt);
-        const snapshotRow = this.#findSnapshotIdStatement.get(source, snapshotAt);
+        const snapshotRow = this.#findSnapshotIdStatement.get(
+          source,
+          snapshotAt,
+        );
 
         if (!snapshotRow) {
           throw new StorageValidationError(
@@ -396,7 +401,7 @@ class SqliteRealtimeRepository implements RealtimeRepository {
             observation.scheduled_at ?? null,
             observation.observed_at,
             observation.delay_seconds,
-            observation.has_usable_delay ?? true ? 1 : 0,
+            (observation.has_usable_delay ?? true) ? 1 : 0,
             observation.schedule_relationship ?? null,
             observation.trip_id ?? null,
             observation.stop_sequence ?? null,
@@ -625,7 +630,11 @@ class SqliteServiceNoticeRepository implements ServiceNoticeRepository {
     }
 
     parseTimestamp(effectiveFetchedAt);
-    this.#replaceForSourceTransaction(source, parsedNotices, effectiveFetchedAt);
+    this.#replaceForSourceTransaction(
+      source,
+      parsedNotices,
+      effectiveFetchedAt,
+    );
   }
 }
 
@@ -759,7 +768,11 @@ class SqliteExternalImpactRepository implements ExternalImpactRepository {
     }
 
     parseTimestamp(effectiveFetchedAt);
-    this.#replaceForSourceTransaction(source, parsedImpacts, effectiveFetchedAt);
+    this.#replaceForSourceTransaction(
+      source,
+      parsedImpacts,
+      effectiveFetchedAt,
+    );
   }
 }
 

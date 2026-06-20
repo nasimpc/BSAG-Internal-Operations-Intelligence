@@ -69,7 +69,9 @@ function encodeProtobufFeed(): Uint8Array {
     ],
   });
 
-  return gtfsRealtimeBindings.transit_realtime.FeedMessage.encode(message).finish();
+  return gtfsRealtimeBindings.transit_realtime.FeedMessage.encode(
+    message,
+  ).finish();
 }
 
 describe('parseVbnRealtimeJson', () => {
@@ -124,6 +126,141 @@ describe('parseVbnRealtimeJson', () => {
         code: 'PARSER_ENTITY_INVALID',
       }),
     );
+  });
+
+  it('accepts numeric strings, derives relationships from trip and stop updates, and reports invalid entities', () => {
+    const outcome = parseVbnRealtimeJson(
+      JSON.stringify({
+        Header: {
+          Timestamp: '1718860500',
+        },
+        Entity: [
+          'invalid entity',
+          {
+            Id: 'entity-1',
+            TripUpdate: {
+              Trip: {
+                RouteId: '10',
+                TripId: 'trip-10',
+                ScheduleRelationship: 'SKIPPED',
+              },
+              Delay: '120',
+            },
+          },
+          {
+            TripUpdate: {
+              Trip: {
+                RouteId: '11',
+                TripId: 'trip-11',
+              },
+              StopTimeUpdate: [
+                {
+                  StopSequence: '1',
+                  Arrival: {
+                    Delay: '60',
+                  },
+                },
+                {
+                  StopSequence: '2',
+                  ScheduleRelationship: 'CANCELED',
+                  Departure: {
+                    Delay: '90',
+                  },
+                },
+              ],
+            },
+          },
+          {
+            TripUpdate: {
+              Trip: {
+                RouteId: '12',
+              },
+              StopTimeUpdate: {},
+            },
+          },
+          {
+            TripUpdate: {
+              Trip: {},
+            },
+          },
+        ],
+      }),
+      fetchedAt,
+    );
+
+    expect(outcome.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entity_id: 'entity-1',
+          route_id: '10',
+          trip_id: 'trip-10',
+          observed_at: '2024-06-20T05:15:00.000Z',
+          delay_seconds: 120,
+          has_usable_delay: true,
+          schedule_relationship: 'skipped',
+        }),
+        expect.objectContaining({
+          route_id: '11',
+          trip_id: 'trip-11',
+          observed_at: '2024-06-20T05:15:00.000Z',
+          delay_seconds: 90,
+          has_usable_delay: true,
+          schedule_relationship: 'canceled',
+          update_count: 2,
+        }),
+        expect.objectContaining({
+          route_id: '12',
+          observed_at: '2024-06-20T05:15:00.000Z',
+          has_usable_delay: false,
+          schedule_relationship: 'scheduled',
+          update_count: 0,
+        }),
+      ]),
+    );
+    expect(
+      outcome.warnings.filter(
+        (warningItem) => warningItem.code === 'PARSER_ENTITY_INVALID',
+      ),
+    ).toHaveLength(2);
+  });
+
+  it('falls back to fetchedAt when the header timestamp is not a scalar', () => {
+    const outcome = parseVbnRealtimeJson(
+      JSON.stringify({
+        Header: {
+          Timestamp: {
+            seconds: 1718860500,
+          },
+        },
+        Entity: [
+          {
+            TripUpdate: {
+              Trip: {
+                RouteId: '14',
+              },
+              StopTimeUpdate: [
+                {
+                  StopSequence: {},
+                  Arrival: {
+                    Delay: 30,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      fetchedAt,
+    );
+
+    expect(outcome.data).toEqual([
+      expect.objectContaining({
+        route_id: '14',
+        observed_at: fetchedAt,
+        delay_seconds: 30,
+        has_usable_delay: true,
+      }),
+    ]);
   });
 
   it('maps protobuf feed messages into the same raw shape', () => {
