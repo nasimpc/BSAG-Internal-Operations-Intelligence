@@ -77,6 +77,19 @@ describe('matchCorridor', () => {
     });
   });
 
+  it('matches uppercase ẞ after unicode normalization', () => {
+    const record: MatchableRecord = {
+      title: 'SANKT-JURGEN-STRAẞE stop closed',
+      text: 'Diversion via MUNCHENER STRAẞE',
+    };
+
+    expect(matchCorridor(corridor, record)).toEqual({
+      corridor_id: 'east',
+      confidence: 'phrase',
+      matched_aliases: ['Sankt-Jürgen-Straße', 'Münchener Straße'],
+    });
+  });
+
   it('does not match unrelated substrings inside words', () => {
     const record: MatchableRecord = {
       title: 'Kosten steigen im Zentrum',

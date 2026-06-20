@@ -31,10 +31,10 @@ export interface CorridorMatch {
 function normalizePhrase(value: string): string {
   return value
     .normalize('NFKD')
+    .toLowerCase()
     .replace(/ß/g, 'ss')
     .replace(/\p{Diacritic}/gu, '')
     .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
-    .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ');
 }
@@ -42,10 +42,10 @@ function normalizePhrase(value: string): string {
 function normalizeKey(value: string): string {
   return value
     .normalize('NFKD')
+    .toLowerCase()
     .replace(/ß/g, 'ss')
     .replace(/\p{Diacritic}/gu, '')
-    .replace(/[^\p{Letter}\p{Number}]+/gu, '')
-    .toLowerCase();
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '');
 }
 
 function deepFreeze<T>(value: T): Readonly<T> {
