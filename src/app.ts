@@ -9,6 +9,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { loadCorridors } from './config/corridors.js';
 import { loadEnv, type EnvConfig } from './config/env.js';
+import { loadLineRouteMap } from './config/line-route-map.js';
 import { logger as defaultLogger } from './shared/logger.js';
 import { type Clock, SystemClock } from './shared/clock.js';
 import { openDatabase } from './storage/database.js';
@@ -38,6 +39,9 @@ const HTML_FETCH_POLICY: TextFetchPolicy = {
 const DEFAULT_CORRIDORS_PATH = fileURLToPath(
   new URL('../config/corridors.json', import.meta.url),
 );
+const DEFAULT_LINE_ROUTE_MAP_PATH = fileURLToPath(
+  new URL('../config/line-route-map.json', import.meta.url),
+);
 
 const runtimeEnvSchema = z.object({
   HTTP_PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
@@ -46,6 +50,11 @@ const runtimeEnvSchema = z.object({
   DATA_PATH: z.string().trim().min(1).optional(),
   BSAG_MCP_DATA_DIR: z.string().trim().min(1).optional(),
   CORRIDORS_PATH: z.string().trim().min(1).default(DEFAULT_CORRIDORS_PATH),
+  LINE_ROUTE_MAP_PATH: z
+    .string()
+    .trim()
+    .min(1)
+    .default(DEFAULT_LINE_ROUTE_MAP_PATH),
 });
 
 export interface ApplicationConfig {
@@ -59,6 +68,7 @@ export interface ApplicationConfig {
   paths: {
     corridorsPath: string;
     dataPath: string;
+    lineRouteMapPath: string;
   };
 }
 
@@ -77,6 +87,7 @@ export interface ApplicationOptions {
   dataPath?: string;
   dispatcher?: Dispatcher;
   env?: Record<string, string | undefined>;
+  lineRouteMapPath?: string;
   logger?: Logger;
   pdfExtractor?: (bytes: Uint8Array) => Promise<string>;
 }
@@ -87,6 +98,7 @@ interface RuntimeEnvConfig {
   httpAllowedOrigins: string[];
   dataPath: string;
   corridorsPath: string;
+  lineRouteMapPath: string;
 }
 
 export function createApplication(
@@ -98,6 +110,7 @@ export function createApplication(
   const logger = options.logger ?? defaultLogger;
   const clock = options.clock ?? new SystemClock();
   const corridors = loadCorridors(runtimeConfig.corridorsPath);
+  const lineRouteMap = loadLineRouteMap(runtimeConfig.lineRouteMapPath);
 
   mkdirSync(dirname(runtimeConfig.dataPath), { recursive: true });
 
@@ -126,6 +139,7 @@ export function createApplication(
     repositories,
     retentionDays: coreConfig.retention.days,
     refreshIntervalSeconds: coreConfig.realtime.refreshIntervalSeconds,
+    routeMap: lineRouteMap,
     source: new VbnRealtimeSource({
       client: httpClient,
       jsonUrl: new URL(coreConfig.sources.vbnRealtimeJsonUrl),
@@ -215,6 +229,7 @@ export function createApplication(
     paths: {
       corridorsPath: runtimeConfig.corridorsPath,
       dataPath: runtimeConfig.dataPath,
+      lineRouteMapPath: runtimeConfig.lineRouteMapPath,
     },
   });
 
@@ -267,6 +282,7 @@ function loadRuntimeEnv(
         ? join(process.cwd(), 'data', 'bsag.sqlite')
         : join(parsed.BSAG_MCP_DATA_DIR, 'bsag.sqlite')),
     corridorsPath: options.corridorsPath ?? parsed.CORRIDORS_PATH,
+    lineRouteMapPath: options.lineRouteMapPath ?? parsed.LINE_ROUTE_MAP_PATH,
   };
 }
 

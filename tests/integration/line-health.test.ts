@@ -292,6 +292,197 @@ describe('LineHealthService', () => {
     }
   });
 
+  it('maps public line labels to configured GTFS route IDs for live, cached, and historical summaries', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-20T06:05:00Z');
+    const source = new StubRealtimeSource([
+      buildOutcome('2026-06-20T06:05:00Z', [
+        {
+          route_id: '35757_0',
+          trip_id: 'trip-6-a',
+          observed_at: '2026-06-20T06:05:00Z',
+          delay_seconds: 60,
+          has_usable_delay: true,
+          schedule_relationship: 'scheduled',
+          update_count: 1,
+        },
+        {
+          route_id: '35757_0',
+          trip_id: 'trip-6-b',
+          observed_at: '2026-06-20T06:05:00Z',
+          delay_seconds: 360,
+          has_usable_delay: true,
+          schedule_relationship: 'scheduled',
+          update_count: 1,
+        },
+        {
+          route_id: '35755_0',
+          trip_id: 'trip-10-a',
+          observed_at: '2026-06-20T06:05:00Z',
+          delay_seconds: 120,
+          has_usable_delay: true,
+          schedule_relationship: 'scheduled',
+          update_count: 1,
+        },
+      ]),
+    ]);
+    const service = new LineHealthService({
+      clock,
+      repositories: harness.repositories,
+      retentionDays: 30,
+      refreshIntervalSeconds: 300,
+      routeMap: new Map([
+        ['6', ['35757_0']],
+        ['10', ['35755_0']],
+      ]),
+      source,
+    });
+
+    try {
+      const first = await service.get({
+        line_ids: ['6', '10', '35757_0'],
+      });
+
+      expect(first.data.find((line) => line.line_id === '6')).toMatchObject({
+        line_id: '6',
+        trip_count: 2,
+        average_delay_seconds: 210,
+        max_delay_seconds: 360,
+        warnings: [],
+      });
+      expect(first.data.find((line) => line.line_id === '10')).toMatchObject({
+        line_id: '10',
+        trip_count: 1,
+        average_delay_seconds: 120,
+        warnings: [],
+      });
+      expect(
+        first.data.find((line) => line.line_id === '35757_0'),
+      ).toMatchObject({
+        line_id: '35757_0',
+        trip_count: 2,
+        average_delay_seconds: 210,
+      });
+      expect(first.warnings).not.toContainEqual(
+        expect.objectContaining({
+          source: 'vbn_realtime',
+          code: 'ROUTE_MAPPING_UNAVAILABLE',
+        }),
+      );
+
+      clock.set('2026-06-20T06:06:00Z');
+
+      const cached = await service.get({ line_ids: ['6'] });
+      const historical = await service.get({
+        line_ids: ['6'],
+        at_time: '2026-06-20T06:07:00Z',
+      });
+
+      expect(source.callCount).toBe(1);
+      expect(cached.data[0]).toMatchObject({
+        line_id: '6',
+        trip_count: 2,
+        max_delay_seconds: 360,
+      });
+      expect(historical.data[0]).toMatchObject({
+        line_id: '6',
+        snapshot_at: '2026-06-20T06:05:00Z',
+        trip_count: 2,
+        max_delay_seconds: 360,
+      });
+    } finally {
+      harness.close();
+    }
+  });
+
+  it('warns when public line labels cannot be mapped to opaque GTFS route IDs', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-20T06:05:00Z');
+    const source = new StubRealtimeSource([
+      buildOutcome('2026-06-20T06:05:00Z', [
+        {
+          route_id: '75236_3',
+          trip_id: 'trip-opaque-1',
+          observed_at: '2026-06-20T06:05:00Z',
+          delay_seconds: 180,
+          has_usable_delay: true,
+          schedule_relationship: 'scheduled',
+          update_count: 1,
+        },
+        {
+          route_id: '65698_3',
+          trip_id: 'trip-opaque-2',
+          observed_at: '2026-06-20T06:05:00Z',
+          delay_seconds: 60,
+          has_usable_delay: true,
+          schedule_relationship: 'scheduled',
+          update_count: 1,
+        },
+      ]),
+    ]);
+    const service = new LineHealthService({
+      clock,
+      repositories: harness.repositories,
+      retentionDays: 30,
+      refreshIntervalSeconds: 300,
+      source,
+    });
+
+    try {
+      const first = await service.get({ line_ids: ['1', '75236_3'] });
+
+      expect(first.data).toHaveLength(2);
+      expect(
+        first.data.find((line) => line.line_id === '75236_3'),
+      ).toMatchObject({
+        line_id: '75236_3',
+        trip_count: 1,
+        average_delay_seconds: 180,
+        warnings: [],
+      });
+      expect(first.data.find((line) => line.line_id === '1')).toMatchObject({
+        line_id: '1',
+        snapshot_at: '2026-06-20T06:05:00Z',
+        trip_count: 0,
+        warnings: [
+          expect.objectContaining({
+            source: 'vbn_realtime',
+            code: 'ROUTE_MAPPING_UNAVAILABLE',
+          }),
+        ],
+      });
+      expect(first.warnings).toContainEqual(
+        expect.objectContaining({
+          source: 'vbn_realtime',
+          code: 'ROUTE_MAPPING_UNAVAILABLE',
+        }),
+      );
+      expect(first.warnings).not.toContainEqual(
+        expect.objectContaining({
+          source: 'vbn_realtime',
+          code: 'NO_OBSERVATIONS',
+        }),
+      );
+
+      clock.set('2026-06-20T06:06:00Z');
+
+      const second = await service.get({ line_ids: ['1'] });
+
+      expect(source.callCount).toBe(1);
+      expect(second.data[0]).toMatchObject({
+        line_id: '1',
+        snapshot_at: '2026-06-20T06:05:00Z',
+        warnings: [
+          expect.objectContaining({
+            code: 'ROUTE_MAPPING_UNAVAILABLE',
+          }),
+        ],
+      });
+    } finally {
+      harness.close();
+    }
+  });
+
   it('uses the request time as the snapshot when a refresh returns no observations', async () => {
     const harness = createHarness();
     const clock = new TestClock('2026-06-20T06:05:00Z');

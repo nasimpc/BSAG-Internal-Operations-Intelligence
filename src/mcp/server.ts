@@ -328,7 +328,7 @@ export function createOperationsBriefingMcpServer(
     'get_line_health',
     {
       description:
-        'Get public-source VBN GTFS-Realtime line health for one or more BSAG lines. Results may be partial and include explicit source warnings when feeds are stale, missing, or unavailable.',
+        'Get public-source VBN GTFS-Realtime health for one or more BSAG/VBN line labels or GTFS route IDs. Standard public labels such as 6 or 10 are translated through the configured route map; unmapped labels return explicit source warnings such as ROUTE_MAPPING_UNAVAILABLE.',
       inputSchema: getLineHealthInputSchema,
       outputSchema: getLineHealthOutputSchema,
     },
@@ -503,14 +503,17 @@ function summarizeLineHealth(
   input: GetLineHealthInput,
   outcome: SourceOutcome<LineHealth[]>,
 ): string[] {
-  const highestDelay = [...outcome.data].sort(
+  const observedLines = outcome.data.filter((line) => line.trip_count > 0);
+  const highestDelay = [...observedLines].sort(
     (left, right) => right.average_delay_seconds - left.average_delay_seconds,
   )[0];
 
   return [
     `Requested ${String(input.line_ids.length)} ${pluralize('line', input.line_ids.length)}.`,
     highestDelay === undefined
-      ? 'No line health records were returned.'
+      ? outcome.data.length === 0
+        ? 'No line health records were returned.'
+        : 'No realtime observations were mapped for the requested IDs.'
       : `Highest average delay: Line ${highestDelay.line_id} at ${formatDuration(highestDelay.average_delay_seconds)}.`,
   ];
 }

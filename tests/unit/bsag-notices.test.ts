@@ -47,9 +47,55 @@ describe('parseBsagNoticesHtml', () => {
     ).toBe(false);
   });
 
-  it('returns PARSER_NO_RECORDS for a structurally valid page without operational notice candidates', () => {
+  it('returns an empty complete outcome for a page without operational notice candidates', () => {
     const outcome = parseBsagNoticesHtml(
       '<main><article><h2>BSAG veröffentlicht Jahresbericht</h2><p>Unternehmensnachrichten.</p></article></main>',
+      sourceUrl,
+      fetchedAt,
+    );
+
+    expect(outcome.data).toEqual([]);
+    expect(outcome.warnings).toEqual([]);
+  });
+
+  it('parses current BSAG news cards with whitespace overlay links and global operational scope', () => {
+    const outcome = parseBsagNoticesHtml(
+      [
+        '<main>',
+        '  <div class="article articletype-0 card" itemscope itemtype="http://schema.org/Article">',
+        '    <div class="body">',
+        '      <span class="news-list-date"><time itemprop="datePublished" datetime="2026-05-18">18.05.2026</time></span>',
+        '      <h2 itemprop="headline">Einschränkungen bei Fahrgastinfos und Echtzeitdaten</h2>',
+        '      <div itemprop="description"><p>Wartungsarbeiten am Mittwoch</p></div>',
+        '    </div>',
+        '    <a title="Einschränkungen bei Fahrgastinfos und Echtzeitdaten" href="/unternehmen/aktuelles/meldung/einschraenkungen-bei-fahrgastinfos-und-echtzeitdaten">&nbsp;</a>',
+        '  </div>',
+        '</main>',
+      ].join('\n'),
+      sourceUrl,
+      fetchedAt,
+    );
+
+    expect(outcome.data).toHaveLength(1);
+    expect(outcome.data[0]).toMatchObject({
+      title: 'Einschränkungen bei Fahrgastinfos und Echtzeitdaten',
+      summary: 'Wartungsarbeiten am Mittwoch',
+      lines: [],
+      stop_names: [],
+      severity: 'warning',
+      provenance: {
+        source: 'bsag',
+        sourceUrl:
+          'https://www.bsag.de/unternehmen/aktuelles/meldung/einschraenkungen-bei-fahrgastinfos-und-echtzeitdaten',
+        publishedAt: '2026-05-17T22:00:00.000Z',
+      },
+    });
+    expect(outcome.warnings).toEqual([]);
+  });
+
+  it('warns when an operational-looking page has no parseable notice containers', () => {
+    const outcome = parseBsagNoticesHtml(
+      '<main><div>Linie 4: Umleitung wegen Baustelle an der Domsheide</div></main>',
       sourceUrl,
       fetchedAt,
     );

@@ -1,7 +1,10 @@
 import type { DelayObservation, LineHealth } from '../domain/models.js';
 import { type SourceOutcome, warning } from '../domain/result.js';
 import type { Clock } from '../shared/clock.js';
-import type { DatabaseRepositories } from '../storage/repositories.js';
+import type {
+  DatabaseRepositories,
+  HistoricalSnapshot,
+} from '../storage/repositories.js';
 import type { VbnRealtimeRecord } from '../sources/vbn-realtime.js';
 
 const MAX_LINE_IDS = 100;
@@ -10,6 +13,7 @@ const DEFAULT_ON_TIME_THRESHOLD_SECONDS = 300;
 const DEFAULT_EARLY_RUNNING_THRESHOLD_SECONDS = 60;
 const DEFAULT_LOW_COVERAGE_THRESHOLD = 0.75;
 const FALLBACK_SOURCE_URL = 'https://realtime.invalid/vbn-realtime';
+const OPAQUE_GTFS_ROUTE_ID_PATTERN = /^\d+_\d+$/;
 
 export interface GetLineHealthInput {
   line_ids: string[];
@@ -22,6 +26,8 @@ export interface LineHealthThresholdOptions {
   lowCoverageThreshold?: number;
 }
 
+export type LineRouteMap = ReadonlyMap<string, readonly string[]>;
+
 export interface LineHealthServiceOptions extends LineHealthThresholdOptions {
   source: {
     fetch(): Promise<SourceOutcome<VbnRealtimeRecord[]>>;
@@ -30,12 +36,14 @@ export interface LineHealthServiceOptions extends LineHealthThresholdOptions {
   clock: Clock;
   refreshIntervalSeconds: number;
   retentionDays: number;
+  routeMap?: LineRouteMap;
 }
 
 export class LineHealthService {
   readonly #source;
   readonly #repositories;
   readonly #clock;
+  readonly #routeMap: LineRouteMap;
   readonly #refreshIntervalSeconds: number;
   readonly #retentionDays: number;
   readonly #thresholds: Required<LineHealthThresholdOptions>;
@@ -45,6 +53,7 @@ export class LineHealthService {
     this.#source = options.source;
     this.#repositories = options.repositories;
     this.#clock = options.clock;
+    this.#routeMap = normalizeLineRouteMap(options.routeMap);
     this.#refreshIntervalSeconds = options.refreshIntervalSeconds;
     this.#retentionDays = options.retentionDays;
     this.#thresholds = {
@@ -148,24 +157,42 @@ export class LineHealthService {
     sourceStatus: SourceOutcome<never[]>['sources'][number],
     extraWarnings: SourceOutcome<LineHealth[]>['warnings'],
   ): SourceOutcome<LineHealth[]> {
-    const lineHealth = lineIds.map((lineId) => {
-      const snapshot = this.#repositories.realtime.findSnapshotAtOrBefore(
-        lineId,
+    const snapshotLineIds =
+      this.#repositories.realtime.findSnapshotLineIdsAtOrBefore(
+        'vbn_realtime',
         atTime,
         maxAgeSeconds,
       );
+    const lineHealth = lineIds.map((lineId) => {
+      const resolved = this.resolveObservationLineIds(lineId);
+      const snapshots = resolved.observationLineIds
+        .map((observationLineId) =>
+          this.#repositories.realtime.findSnapshotAtOrBefore(
+            observationLineId,
+            atTime,
+            maxAgeSeconds,
+          ),
+        )
+        .filter(
+          (snapshot): snapshot is HistoricalSnapshot => snapshot !== undefined,
+        );
+      const snapshotAt =
+        newestSnapshotAt(snapshots) ?? snapshotLineIds?.snapshotAt ?? atTime;
+      const records = snapshots
+        .filter((snapshot) => snapshot.snapshotAt === snapshotAt)
+        .flatMap((snapshot) =>
+          snapshot.observations.map((observation) =>
+            recordFromObservation(observation),
+          ),
+        );
 
-      if (!snapshot) {
-        return summarizeLineHealth(lineId, atTime, [], this.#thresholds);
-      }
-
-      return summarizeLineHealth(
+      return summarizeRequestedLineHealth(
         lineId,
-        snapshot.snapshotAt,
-        snapshot.observations.map((observation) =>
-          recordFromObservation(observation),
-        ),
+        snapshotAt,
+        records,
+        snapshotLineIds?.lineIds ?? [],
         this.#thresholds,
+        resolved.hasConfiguredMapping,
       );
     });
 
@@ -195,14 +222,19 @@ export class LineHealthService {
     );
 
     const recordsByLine = groupRecordsByLine(outcome.data);
-    const lineHealth = requestedLineIds.map((lineId) =>
-      summarizeLineHealth(
+    const feedLineIds = [...recordsByLine.keys()];
+    const lineHealth = requestedLineIds.map((lineId) => {
+      const resolved = this.resolveObservationLineIds(lineId);
+
+      return summarizeRequestedLineHealth(
         lineId,
         snapshotAt,
-        recordsByLine.get(lineId) ?? [],
+        collectRecordsForLineIds(recordsByLine, resolved.observationLineIds),
+        feedLineIds,
         this.#thresholds,
-      ),
-    );
+        resolved.hasConfiguredMapping,
+      );
+    });
 
     return {
       data: lineHealth,
@@ -224,6 +256,59 @@ export class LineHealthService {
 
     return this.#refreshPromise;
   }
+
+  private resolveObservationLineIds(lineId: string): {
+    observationLineIds: string[];
+    hasConfiguredMapping: boolean;
+  } {
+    const mappedRouteIds = lookupMappedRouteIds(this.#routeMap, lineId);
+
+    if (mappedRouteIds.length === 0) {
+      return {
+        observationLineIds: [lineId],
+        hasConfiguredMapping: false,
+      };
+    }
+
+    return {
+      observationLineIds: dedupeLineIds([lineId, ...mappedRouteIds]),
+      hasConfiguredMapping: true,
+    };
+  }
+}
+
+function summarizeRequestedLineHealth(
+  lineId: string,
+  snapshotAt: string,
+  records: readonly VbnRealtimeRecord[],
+  feedLineIds: readonly string[],
+  options: LineHealthThresholdOptions = {},
+  hasConfiguredMapping = false,
+): LineHealth {
+  const health = summarizeLineHealth(lineId, snapshotAt, records, options);
+
+  if (records.length > 0 || !hasOpaqueGtfsRouteIds(feedLineIds)) {
+    return health;
+  }
+
+  if (hasConfiguredMapping || looksLikeOpaqueGtfsRouteId(lineId)) {
+    return health;
+  }
+
+  return {
+    ...health,
+    warnings: [
+      warning(
+        'vbn_realtime',
+        'ROUTE_MAPPING_UNAVAILABLE',
+        routeMappingUnavailableMessage(lineId, feedLineIds),
+        {
+          occurredAt: snapshotAt,
+          retryable: false,
+        },
+      ),
+    ],
+  };
 }
 
 export function summarizeLineHealth(
@@ -399,6 +484,111 @@ function groupRecordsByLine(
   }
 
   return grouped;
+}
+
+function collectRecordsForLineIds(
+  recordsByLine: ReadonlyMap<string, readonly VbnRealtimeRecord[]>,
+  lineIds: readonly string[],
+): VbnRealtimeRecord[] {
+  return lineIds.flatMap((lineId) => recordsByLine.get(lineId) ?? []);
+}
+
+function newestSnapshotAt(
+  snapshots: readonly HistoricalSnapshot[],
+): string | undefined {
+  return snapshots.reduce<string | undefined>(
+    (newest, snapshot) =>
+      newest === undefined || snapshot.snapshotAt > newest
+        ? snapshot.snapshotAt
+        : newest,
+    undefined,
+  );
+}
+
+function normalizeLineRouteMap(
+  routeMap: LineRouteMap | undefined,
+): LineRouteMap {
+  const normalized = new Map<string, readonly string[]>();
+
+  if (routeMap === undefined) {
+    return normalized;
+  }
+
+  for (const [lineId, routeIds] of routeMap) {
+    const normalizedLineId = lineId.trim();
+    const normalizedRouteIds = dedupeLineIds(routeIds);
+
+    if (normalizedLineId.length > 0 && normalizedRouteIds.length > 0) {
+      normalized.set(normalizedLineId, Object.freeze(normalizedRouteIds));
+    }
+  }
+
+  return normalized;
+}
+
+function lookupMappedRouteIds(
+  routeMap: LineRouteMap,
+  lineId: string,
+): readonly string[] {
+  const exact = routeMap.get(lineId);
+
+  if (exact !== undefined) {
+    return exact;
+  }
+
+  const upper = lineId.toUpperCase();
+
+  if (upper === lineId) {
+    return [];
+  }
+
+  return routeMap.get(upper) ?? [];
+}
+
+function dedupeLineIds(lineIds: readonly string[]): string[] {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const lineId of lineIds) {
+    const trimmed = lineId.trim();
+
+    if (trimmed.length === 0 || seen.has(trimmed)) {
+      continue;
+    }
+
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+}
+
+function hasOpaqueGtfsRouteIds(lineIds: readonly string[]): boolean {
+  return lineIds.some((lineId) => looksLikeOpaqueGtfsRouteId(lineId));
+}
+
+function looksLikeOpaqueGtfsRouteId(lineId: string): boolean {
+  return OPAQUE_GTFS_ROUTE_ID_PATTERN.test(lineId);
+}
+
+function routeMappingUnavailableMessage(
+  lineId: string,
+  feedLineIds: readonly string[],
+): string {
+  const sampleIds = [...new Set(feedLineIds)]
+    .filter((candidate) => looksLikeOpaqueGtfsRouteId(candidate))
+    .sort()
+    .slice(0, 3);
+  const sampleText =
+    sampleIds.length === 0
+      ? ''
+      : ` Sample feed route IDs: ${sampleIds.join(', ')}.`;
+
+  return (
+    `VBN GTFS-Realtime observations are keyed by static GTFS route IDs, but requested line ${lineId} is a public line label and no static GTFS route mapping is configured.` +
+    sampleText +
+    ' No line-health conclusion was made for this requested ID.'
+  );
 }
 
 function collectLineWarnings(lineHealth: readonly LineHealth[]) {

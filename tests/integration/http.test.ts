@@ -285,6 +285,7 @@ function fakeApplication(ready: boolean): Application {
       paths: {
         corridorsPath: '/tmp/corridors.json',
         dataPath: '/tmp/storage.sqlite',
+        lineRouteMapPath: '/tmp/line-route-map.json',
       },
     },
     createMcpServer() {

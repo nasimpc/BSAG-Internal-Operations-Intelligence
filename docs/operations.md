@@ -20,6 +20,7 @@ Both modes use the same SQLite database and the same five MCP tools.
 
 - `BSAG_MCP_DATA_DIR=/path/to/dir` stores `bsag.sqlite`
 - `CORRIDORS_PATH` points at the editable corridor mapping
+- `LINE_ROUTE_MAP_PATH` points at the editable public line to GTFS route ID mapping
 - realtime retention is controlled by `RETENTION_DAYS`
 
 ## Recommended startup

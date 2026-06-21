@@ -88,6 +88,10 @@ interface SnapshotRow {
   snapshotAt: string;
 }
 
+interface LineIdRow {
+  lineId: string;
+}
+
 interface DelayObservationRow {
   lineId: string;
   entityId: string | null;
@@ -141,6 +145,11 @@ export interface HistoricalSnapshot {
   observations: DelayObservation[];
 }
 
+export interface RealtimeSnapshotLineIds {
+  snapshotAt: string;
+  lineIds: string[];
+}
+
 export interface WriteSnapshotOptions {
   cleanupAsOf?: string;
   fetchedAt?: string;
@@ -154,6 +163,11 @@ export interface SourceStateRepository {
 
 export interface RealtimeRepository {
   cleanupOldSnapshots(retentionDays: number, asOf: string): number;
+  findSnapshotLineIdsAtOrBefore(
+    source: SourceId,
+    atTime: string,
+    maxAgeSeconds: number,
+  ): RealtimeSnapshotLineIds | undefined;
   findSnapshotAtOrBefore(
     lineId: string,
     atTime: string,
@@ -266,6 +280,8 @@ class SqliteRealtimeRepository implements RealtimeRepository {
   readonly #cleanupStatement;
   readonly #deleteObservationsForSnapshotStatement;
   readonly #findObservationsForSnapshotStatement;
+  readonly #findLineIdsForSnapshotStatement;
+  readonly #findSnapshotForSourceStatement;
   readonly #findSnapshotForLineStatement;
   readonly #findSnapshotIdStatement;
   readonly #insertObservationStatement;
@@ -342,6 +358,25 @@ class SqliteRealtimeRepository implements RealtimeRepository {
         GROUP BY s.id, s.snapshot_at
         ORDER BY s.snapshot_at DESC
         LIMIT 1`,
+    );
+    this.#findSnapshotForSourceStatement = database.prepare<
+      [SourceId, string],
+      SnapshotRow
+    >(
+      `SELECT id AS snapshotId, snapshot_at AS snapshotAt
+         FROM realtime_snapshots
+        WHERE source = ? AND snapshot_at <= ?
+        ORDER BY snapshot_at DESC
+        LIMIT 1`,
+    );
+    this.#findLineIdsForSnapshotStatement = database.prepare<
+      [number],
+      LineIdRow
+    >(
+      `SELECT DISTINCT line_id AS lineId
+         FROM delay_observations
+        WHERE snapshot_id = ?
+        ORDER BY line_id ASC`,
     );
     this.#findObservationsForSnapshotStatement = database.prepare<
       [number, string],
@@ -461,6 +496,39 @@ class SqliteRealtimeRepository implements RealtimeRepository {
       observations: this.#findObservationsForSnapshotStatement
         .all(snapshot.snapshotId, lineId)
         .map((row) => toDelayObservation(row)),
+    };
+  }
+
+  findSnapshotLineIdsAtOrBefore(
+    source: SourceId,
+    atTime: string,
+    maxAgeSeconds: number,
+  ): RealtimeSnapshotLineIds | undefined {
+    if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds < 0) {
+      throw new StorageValidationError(
+        `maxAgeSeconds must be zero or greater, received ${String(maxAgeSeconds)}`,
+      );
+    }
+
+    const snapshot = this.#findSnapshotForSourceStatement.get(source, atTime);
+
+    if (!snapshot) {
+      return undefined;
+    }
+
+    const ageSeconds = Math.floor(
+      (parseTimestamp(atTime) - parseTimestamp(snapshot.snapshotAt)) / 1000,
+    );
+
+    if (ageSeconds > maxAgeSeconds) {
+      return undefined;
+    }
+
+    return {
+      snapshotAt: snapshot.snapshotAt,
+      lineIds: this.#findLineIdsForSnapshotStatement
+        .all(snapshot.snapshotId)
+        .map((row) => row.lineId),
     };
   }
 

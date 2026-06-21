@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "config/corridors.json",
+    "config/line-route-map.json",
     "README.md",
     "docs/operations.md",
     ".env.example"

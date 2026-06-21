@@ -464,4 +464,47 @@ describe('ServiceNoticeService', () => {
       harness.close();
     }
   });
+
+  it('keeps open-ended effective notices active beyond the default lookback', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-20T12:00:00Z');
+    const bsagSource = new StubNoticeSource('bsag', [
+      buildOutcome('bsag', '2026-06-20T12:00:00Z', []),
+    ]);
+    const vbnSource = new StubNoticeSource('vbn_notices', [
+      buildOutcome('vbn_notices', '2026-06-20T12:00:00Z', [
+        buildNotice('vbn_notices', 'vbn-open-ended', {
+          title: 'Linie 6 open-ended diversion',
+          lines: ['6'],
+          stop_names: ['Flughafen Bremen'],
+          valid_from: '2026-04-07T01:00:00.000Z',
+          provenance: {
+            source: 'vbn_notices',
+            sourceUrl: 'https://example.test/vbn/open-ended',
+            fetchedAt: '2026-06-20T12:00:00Z',
+            contentHash: 'hash-vbn-open-ended',
+          },
+        }),
+      ]),
+    ]);
+    const service = new ServiceNoticeService({
+      clock,
+      repositories: harness.repositories,
+      sources: [bsagSource, vbnSource],
+    });
+
+    try {
+      const result = await service.get({
+        line_ids: ['6'],
+        stop_names: ['Flughafen Bremen'],
+      });
+
+      expect(result.data.map((notice) => notice.id)).toEqual([
+        'vbn-open-ended',
+      ]);
+      expect(result.warnings).toEqual([]);
+    } finally {
+      harness.close();
+    }
+  });
 });

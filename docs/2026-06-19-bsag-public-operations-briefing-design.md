@@ -36,17 +36,17 @@ The server is an operational decision-support tool, not a predictive control sys
 
 Default source URLs are configuration, not hard-coded throughout the application:
 
-| Source | Default endpoint | Primary use |
-| --- | --- | --- |
-| VBN GTFS-Realtime JSON | `http://gtfsr.vbn.de/gtfsr_connect.json` | Current trip delays and route IDs |
-| VBN GTFS-Realtime protobuf | `http://gtfsr.vbn.de/gtfsr_connect.bin` | Optional fallback for realtime observations |
-| VBN bus/tram notices | `https://www.vbn.de/vbn/verkehrshinweise/bus-und-strassenbahnverkehr` | Planned diversions and service changes |
-| BSAG current news | `https://www.bsag.de/unternehmen/aktuelles` | BSAG operational announcements |
-| VMZ current roadworks | `https://vmz.bremen.de/baustellen/aktuell` | Current traffic impacts |
-| VMZ roadworks preview | `https://vmz.bremen.de/baustellen/vorschau` | Future traffic impacts |
-| VMZ roadworks overview | `https://vmz.bremen.de/baustellen/baustellenuebersicht` | Weekly and special PDF notices |
-| VMZ RSS | `https://vmz.bremen.de/verkehrslage/aktuell/feed.rss` | Current traffic alerts |
-| Bremen event calendar | `https://www.bremen.de/kultur/veranstaltungen` | Public events and dates |
+| Source                     | Default endpoint                                                      | Primary use                                 |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------- |
+| VBN GTFS-Realtime JSON     | `http://gtfsr.vbn.de/gtfsr_connect.json`                              | Current trip delays and route IDs           |
+| VBN GTFS-Realtime protobuf | `http://gtfsr.vbn.de/gtfsr_connect.bin`                               | Optional fallback for realtime observations |
+| VBN bus/tram notices       | `https://www.vbn.de/vbn/verkehrshinweise/bus-und-strassenbahnverkehr` | Planned diversions and service changes      |
+| BSAG current news          | `https://www.bsag.de/unternehmen/aktuelles`                           | BSAG operational announcements              |
+| VMZ current roadworks      | `https://vmz.bremen.de/baustellen/aktuell`                            | Current traffic impacts                     |
+| VMZ roadworks preview      | `https://vmz.bremen.de/baustellen/vorschau`                           | Future traffic impacts                      |
+| VMZ roadworks overview     | `https://vmz.bremen.de/baustellen/baustellenuebersicht`               | Weekly and special PDF notices              |
+| VMZ RSS                    | `https://vmz.bremen.de/verkehrslage/aktuell/feed.rss`                 | Current traffic alerts                      |
+| Bremen event calendar      | `https://www.bremen.de/kultur/veranstaltungen`                        | Public events and dates                     |
 
 Source adapters must tolerate redirects and site redesigns by failing independently with a parser warning. Parsed records retain source URL, fetch time, source publication/effective dates where available, and a content hash. The implementation must not imply completeness: VBN itself notes that its notices may not list every change.
 
@@ -70,7 +70,14 @@ All source-derived records carry a provenance object:
 
 ```ts
 interface Provenance {
-  source: "vbn_realtime" | "vbn_notices" | "bsag" | "vmz_rss" | "vmz_web" | "vmz_pdf" | "bremen_events";
+  source:
+    | 'vbn_realtime'
+    | 'vbn_notices'
+    | 'bsag'
+    | 'vmz_rss'
+    | 'vmz_web'
+    | 'vmz_pdf'
+    | 'bremen_events';
   sourceUrl: string;
   fetchedAt: string;
   publishedAt?: string;
@@ -119,8 +126,8 @@ Every tool returns an MCP text content block containing readable English and a s
 ```ts
 interface ToolResponse<T> {
   generated_at: string;
-  timezone: "Europe/Berlin";
-  status: "complete" | "partial";
+  timezone: 'Europe/Berlin';
+  status: 'complete' | 'partial';
   data: T;
   sources: Array<{
     source: string;
@@ -146,6 +153,8 @@ Input:
 ```
 
 Without `at_time`, the service refreshes realtime data subject to a 60-second minimum refresh interval. With `at_time`, it selects the latest snapshot at or before the requested instant. If no preceding snapshot exists within 15 minutes, the line is returned with unavailable metrics and a warning; it does not silently substitute a later observation.
+
+VBN GTFS-Realtime observations are keyed by static GTFS `routeId` values. A configurable route map translates public BSAG line labels such as `6` or `10` to the route IDs used by the realtime feed. When a caller supplies a public label that is not directly present in the feed and no mapping is configured, the service returns unavailable metrics with `ROUTE_MAPPING_UNAVAILABLE` rather than treating the line as disruption-free or unobserved.
 
 For each trip update, the representative delay is the latest usable stop-time delay, falling back to the trip-level delay when present. Metrics include observed trips, updates with usable delay, coverage, mean/median/p95 delay, maximum delay, and percentage on time. The default on-time threshold is delay no greater than 300 seconds; early trips remain on time unless earlier than the configurable early-running threshold. Unsupported GTFS-RT fields are omitted rather than invented.
 

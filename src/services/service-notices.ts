@@ -279,13 +279,11 @@ function matchesSince(notice: ServiceNotice, since: string): boolean {
   const sinceTime = Date.parse(since);
 
   if (notice.valid_from !== undefined || notice.valid_to !== undefined) {
-    const effectiveEnd = notice.valid_to ?? notice.valid_from;
-
-    if (effectiveEnd === undefined) {
-      return false;
+    if (notice.valid_to === undefined) {
+      return true;
     }
 
-    return Date.parse(effectiveEnd) >= sinceTime;
+    return Date.parse(notice.valid_to) >= sinceTime;
   }
 
   return referenceTimestamp(notice) >= sinceTime;

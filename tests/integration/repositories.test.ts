@@ -259,6 +259,50 @@ describe('storage repositories', () => {
     }
   });
 
+  it('lists line IDs from the latest realtime snapshot even when it has no requested line', () => {
+    const harness = createHarness();
+
+    try {
+      harness.repositories.realtime.writeSnapshot(
+        'vbn_realtime',
+        '2026-06-20T06:05:00Z',
+        [
+          buildDelayObservation('75236_3', '2026-06-20T06:05:00Z', 0),
+          buildDelayObservation('75236_3', '2026-06-20T06:05:30Z', 180),
+          buildDelayObservation('65698_3', '2026-06-20T06:05:45Z', 60),
+        ],
+      );
+      harness.repositories.realtime.writeSnapshot(
+        'vbn_realtime',
+        '2026-06-20T06:10:00Z',
+        [],
+      );
+
+      expect(
+        harness.repositories.realtime.findSnapshotLineIdsAtOrBefore(
+          'vbn_realtime',
+          '2026-06-20T06:07:00Z',
+          15 * 60,
+        ),
+      ).toEqual({
+        snapshotAt: '2026-06-20T06:05:00Z',
+        lineIds: ['65698_3', '75236_3'],
+      });
+      expect(
+        harness.repositories.realtime.findSnapshotLineIdsAtOrBefore(
+          'vbn_realtime',
+          '2026-06-20T06:12:00Z',
+          15 * 60,
+        ),
+      ).toEqual({
+        snapshotAt: '2026-06-20T06:10:00Z',
+        lineIds: [],
+      });
+    } finally {
+      destroyHarness(harness);
+    }
+  });
+
   it('cleans up realtime snapshots older than 30 days', () => {
     const harness = createHarness();
 

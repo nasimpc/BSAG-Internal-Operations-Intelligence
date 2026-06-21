@@ -12,7 +12,7 @@ import {
 
 const JSON_FETCH_POLICY: TextFetchPolicy = {
   expectedTypes: ['application/json', 'text/plain'],
-  maxBytes: 2_000_000,
+  maxBytes: 10_000_000,
   timeoutMs: 10_000,
 };
 
