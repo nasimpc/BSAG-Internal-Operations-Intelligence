@@ -8,7 +8,7 @@ TypeScript MCP server for BSAG operations briefings. It combines public VBN GTFS
 - `build_shift_brief`
 - `draft_passenger_information`
 
-Every tool returns a full structured envelope with `status: "complete" | "partial"`, source freshness, and explicit warnings when a public source is stale, unavailable, or only partially parsed.
+Every tool returns a full structured envelope with `status: "complete" | "partial"`, source freshness, explicit citations, and warnings when a public source is stale, unavailable, or only partially parsed.
 
 ## Requirements
 
@@ -128,8 +128,7 @@ inferring a disruption or a clean line. Direct GTFS route IDs are still accepted
 
 ### `get_line_health`
 
-1. Prompt: Check current realtime health for BSAG lines 6 and 10; use the
-   public line numbers, not internal GTFS route IDs.
+1. Prompt: Check current realtime health for BSAG lines 6 and 10; 
 
    ```json
    { "line_ids": ["6", "10"] }
@@ -160,7 +159,7 @@ inferring a disruption or a clean line. Direct GTFS route IDs are still accepted
    { "corridors": ["west"], "date_from": "2026-06-21", "date_to": "2026-06-28" }
    ```
 
-2. Prompt: Find city-centre and north-side external impacts for the Bremen
+2. Prompt: Find central and north external impacts for the Bremen
    Tag der Deutschen Einheit event weekend, 2026-10-02 to 2026-10-04.
 
    ```json
@@ -293,11 +292,35 @@ All public sources are unstable. The server does not hide that instability:
 - `status: "partial"` means at least one warning was attached
 - `sources` reports freshness and staleness by source
 - `warnings` reports machine-readable source problems such as timeouts, stale-cache fallback, parser drift, or truncated results
+- `citations` reports source-level attribution for the returned `data`
+
+Each tool response also includes a readable `Citations` section in its text
+output. In `structuredContent`, citations use this shape:
+
+```ts
+interface Citation {
+  id: string; // cite-1, cite-2, stable within one response
+  source: string;
+  title: string;
+  source_url: string;
+  alternate_urls?: string[];
+  fetched_at?: string;
+  published_at?: string;
+  content_hash?: string;
+  claim_paths: string[]; // JSON Pointer paths such as /data/0
+}
+```
+
+Citation granularity is source-level. Service notices, external impacts, and
+shift-brief major events cite exact record URLs when those URLs are already
+present in provenance. Aggregate outputs such as line health and derived shift
+brief sections cite the configured public source catalog.
 
 ## Risk and attribution limitations
 
 - corridor matching is alias-based, not geographic
 - risk scoring is explainable but heuristic
+- citations identify source material, not claim-level evidence spans
 - realtime coverage depends on public GTFS-Realtime availability
 - notices and events rely on HTML structure that may change without notice
 
