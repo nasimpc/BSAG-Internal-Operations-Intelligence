@@ -104,7 +104,7 @@ Realtime snapshots are stored in SQLite. Old snapshots are pruned according to `
 
 The examples below are phrased as natural-language prompts for an MCP-capable
 assistant, followed by the tool payload that should be sent. The Bremen details
-were selected from public web sources checked on 2026-06-21, so refresh the
+were selected from public web sources checked on 2026-06-22, so refresh the
 dates if the upstream notices have expired:
 
 - BSAG [Linien- und Fahrpläne](https://www.bsag.de/fahrplan/linien-und-fahrplaene)
@@ -129,7 +129,7 @@ inferring a disruption or a clean line. Direct GTFS route IDs are still accepted
 
 ### `get_line_health`
 
-1. Prompt: Check current realtime health for BSAG lines 6 and 10; 
+1. Prompt: Check current realtime health for BSAG lines 6 and 10;
 
    ```json
    { "line_ids": ["6", "10"] }
@@ -151,27 +151,14 @@ inferring a disruption or a clean line. Direct GTFS route IDs are still accepted
 
 ### `get_external_impacts`
 
-
-
-1. Prompt: Check the west corridor from 2026-06-21 through 2026-06-28, including
-   Walle, Gröpelingen, and Steffensweg-related impacts.
+1. Prompt: Check the west corridor on 2026-06-19, including Alte Waller Straße and Waller See, for current VMZ roadworks
 
    ```json
-   { "corridors": ["west"], "date_from": "2026-06-21", "date_to": "2026-06-28" }
+   { "corridors": ["west"], "date_from": "2026-06-19", "date_to": "2026-06-19" }
    ```
 
-2. Prompt: Find central and north external impacts for the Bremen
-   Tag der Deutschen Einheit event weekend, 2026-10-02 to 2026-10-04.
-
-   ```json
-   {
-     "corridors": ["central", "north"],
-     "date_from": "2026-10-02",
-     "date_to": "2026-10-04"
-   }
-   ```
-3. Prompt: For 2026-06-21, list external VMZ and event impacts on the east
-   corridor around Hemelingen, Sebaldsbrück, and Weserpark.
+2. Prompt: For 2026-06-21, list external VMZ and event impacts on the east
+   corridor around Steubenstraße, Vahrer Straße, and Hastedter Heerstraße.
 
    ```json
    { "corridors": ["east"], "date_from": "2026-06-21", "date_to": "2026-06-21" }
@@ -200,8 +187,8 @@ inferring a disruption or a clean line. Direct GTFS route IDs are still accepted
 ### `build_shift_brief`
 
 1. Prompt: Build the east-corridor morning brief for 2026-06-22 and include
-   passenger drafts, because VBN lists Zeppelintunnel and Steubenstraße works
-   around Sebaldsbrück and Hemelingen.
+   passenger drafts, focusing on the Steubenstraße, Vahrer Straße, and
+   Hastedter Heerstraße VMZ works alongside any VBN notices.
 
    ```json
    {
@@ -243,7 +230,7 @@ requested format and channel.
 
 > **Note:** In the current read-only server configuration, this tool operates
 > as a drafting aid — output must be reviewed and published manually. Its full
-> potential is realised in a write-enabled MCP workflow: paired with human-in-the-loop 
+> potential is realised in a write-enabled MCP workflow: paired with human-in-the-loop
 > approval step, it can drive an end-to-end
 > communications pipeline from incident detection through to passenger
 > notification, with a human reviewing and approving each draft before it goes

@@ -117,51 +117,53 @@ async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
     warnings: [],
   };
 
-  const defaultExternalImpactsOutcome: SourceOutcome<MatchedExternalImpact[]> = {
-    data: [
-      {
-        id: 'vmz-impact-1',
-        title: 'Roadworks near Weserpark',
-        summary:
-          'Lane restrictions may slow buses near Osterholzer Heerstraße.',
-        details: 'Osterholzer Heerstraße by Weserpark',
-        corridor_ids: ['east'],
-        starts_at: '2026-06-21T04:00:00.000Z',
-        ends_at: '2026-06-21T14:00:00.000Z',
-        category: 'roadworks',
-        severity: 'high',
-        provenance: {
-          source: 'vmz_web',
-          sourceUrl: 'https://vmz.example/roadworks',
-          fetchedAt: '2026-06-20T05:58:00.000Z',
-        },
-        corridor_matches: [
-          {
-            corridor_id: 'east',
-            confidence: 'phrase',
-            matched_aliases: ['weserpark'],
+  const defaultExternalImpactsOutcome: SourceOutcome<MatchedExternalImpact[]> =
+    {
+      data: [
+        {
+          id: 'vmz-impact-1',
+          title: 'Roadworks near Weserpark',
+          summary:
+            'Lane restrictions may slow buses near Osterholzer Heerstraße.',
+          details: 'Osterholzer Heerstraße by Weserpark',
+          corridor_ids: ['east'],
+          starts_at: '2026-06-21T04:00:00.000Z',
+          ends_at: '2026-06-21T14:00:00.000Z',
+          category: 'roadworks',
+          severity: 'high',
+          provenance: {
+            source: 'vmz_web',
+            sourceUrl: 'https://vmz.example/roadworks',
+            fetchedAt: '2026-06-20T05:58:00.000Z',
           },
-        ],
-      },
-    ],
-    sources: [
-      {
-        source: 'vmz_web',
-        fetched_at: '2026-06-20T05:58:00.000Z',
-        age_seconds: 120,
-        stale: false,
-      },
-    ],
-    warnings: [
-      {
-        source: 'vmz_web',
-        code: 'SOURCE_TIMEOUT',
-        message: 'VMZ roadworks page timed out; feed-only coverage is in use.',
-        occurred_at: '2026-06-20T06:00:00.000Z',
-        retryable: true,
-      },
-    ],
-  };
+          corridor_matches: [
+            {
+              corridor_id: 'east',
+              confidence: 'phrase',
+              matched_aliases: ['weserpark'],
+            },
+          ],
+        },
+      ],
+      sources: [
+        {
+          source: 'vmz_web',
+          fetched_at: '2026-06-20T05:58:00.000Z',
+          age_seconds: 120,
+          stale: false,
+        },
+      ],
+      warnings: [
+        {
+          source: 'vmz_web',
+          code: 'SOURCE_TIMEOUT',
+          message:
+            'VMZ roadworks page timed out; feed-only coverage is in use.',
+          occurred_at: '2026-06-20T06:00:00.000Z',
+          retryable: true,
+        },
+      ],
+    };
 
   const externalImpactsOutcome =
     options.externalImpactsOutcome ?? defaultExternalImpactsOutcome;
@@ -567,7 +569,16 @@ describe('createOperationsBriefingMcpServer', () => {
             }),
           ],
         },
-        citations: expect.arrayContaining([
+      });
+      const citations =
+        typeof result.structuredContent === 'object' &&
+        result.structuredContent !== null &&
+        'citations' in result.structuredContent
+          ? result.structuredContent.citations
+          : undefined;
+
+      expect(citations).toEqual(
+        expect.arrayContaining([
           expect.objectContaining({
             source: 'bremen_events',
             title: 'Weserpark summer concert',
@@ -580,7 +591,7 @@ describe('createOperationsBriefingMcpServer', () => {
             claim_paths: ['/data'],
           }),
         ]),
-      });
+      );
       expect(JSON.stringify(result.structuredContent)).not.toContain(
         'corridor_matches',
       );

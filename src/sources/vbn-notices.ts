@@ -152,15 +152,10 @@ function parseArticleNotice(
     ...(validity.warning === undefined
       ? {}
       : {
-          warning: warning(
-            'vbn_notices',
-            validity.warning,
-            validity.message,
-            {
-              occurredAt: fetchedAt,
-              retryable: false,
-            },
-          ),
+          warning: warning('vbn_notices', validity.warning, validity.message, {
+            occurredAt: fetchedAt,
+            retryable: false,
+          }),
         }),
   };
 }
@@ -192,10 +187,9 @@ function parseAccordionNotice(
 
   const summary = firstUnlabelledParagraph(paragraphs) || title;
   const stopNames = extractListStops($, body.get(0) ?? element);
-  const validity = parseValidityWindow(
-    [title, ...paragraphs].join(' '),
-    { warnWhenUnparsed: false },
-  );
+  const validity = parseValidityWindow([title, ...paragraphs].join(' '), {
+    warnWhenUnparsed: false,
+  });
   const cardId = card.parent('.accordion').attr('id') ?? card.attr('id') ?? '';
   const absoluteUrl = new URL(
     cardId.length === 0 ? sourceUrl.toString() : `#${cardId}`,
@@ -581,7 +575,9 @@ function extractLineTokens(value: string): string[] {
   const candidates =
     lineMentions.length === 0
       ? (value.match(LINE_TOKEN_PATTERN) ?? [])
-      : lineMentions.flatMap((match) => match[1]?.match(LINE_TOKEN_PATTERN) ?? []);
+      : lineMentions.flatMap(
+          (match) => match[1]?.match(LINE_TOKEN_PATTERN) ?? [],
+        );
 
   return [...new Set(candidates)];
 }
@@ -609,11 +605,13 @@ function splitStops(value: string): string[] {
 }
 
 function cleanStopName(value: string): string {
-  return normalizeWhitespace(value)
-    .replace(/\s*\((?:Linie|Linien)[^)]+\)/giu, '')
-    .split(/[→>:]/u)[0]
-    ?.replace(/\s+-\s+(?:stadt(?:ein|aus)wärts|Richtung)\b.*$/iu, '')
-    .trim() ?? '';
+  return (
+    normalizeWhitespace(value)
+      .replace(/\s*\((?:Linie|Linien)[^)]+\)/giu, '')
+      .split(/[→>:]/u)[0]
+      ?.replace(/\s+-\s+(?:stadt(?:ein|aus)wärts|Richtung)\b.*$/iu, '')
+      .trim() ?? ''
+  );
 }
 
 function dedupeStrings(values: string[]): string[] {
@@ -656,7 +654,9 @@ function deduplicateNotices(notices: ServiceNotice[]): ServiceNotice[] {
   return [...deduplicated.values()];
 }
 
-function pageContainsOperationalNoticeText($: ReturnType<typeof load>): boolean {
+function pageContainsOperationalNoticeText(
+  $: ReturnType<typeof load>,
+): boolean {
   const text = normalizeWhitespace($('.root-contentbar, main, body').text());
 
   return hasLineToken(text) && isOperationalCandidate(text);

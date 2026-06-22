@@ -122,6 +122,52 @@ describe('matchCorridor', () => {
     });
   });
 
+  it('matches the new east VMZ street aliases on phrase boundaries only', () => {
+    const eastCorridor = {
+      id: 'east',
+      aliases: [
+        'Steubenstraße',
+        'Vahrer Straße',
+        'Kurfürstenallee',
+        'Hastedter Heerstraße',
+      ],
+      line_ids: [],
+    };
+    const record: MatchableRecord = {
+      title: 'Vollsperrung in der Steubenstraße ab April 2026',
+      text: 'Tempo 30 gilt an der Kurfurstenallee und Vahrer Strasse; die Hastedter Heerstrasse bleibt erreichbar.',
+    };
+
+    expect(matchCorridor(eastCorridor, record)).toEqual({
+      corridor_id: 'east',
+      confidence: 'phrase',
+      matched_aliases: [
+        'Steubenstraße',
+        'Vahrer Straße',
+        'Kurfürstenallee',
+        'Hastedter Heerstraße',
+      ],
+    });
+  });
+
+  it('matches the new west VMZ aliases without broadening to partial words', () => {
+    const westCorridor = {
+      id: 'west',
+      aliases: ['Waller Straße', 'Waller See', 'Rübekamp'],
+      line_ids: [],
+    };
+    const record: MatchableRecord = {
+      title: 'Alte Waller Straße Baustelle',
+      text: 'Arbeiten zwischen Waller See und Rubekamp.',
+    };
+
+    expect(matchCorridor(westCorridor, record)).toEqual({
+      corridor_id: 'west',
+      confidence: 'phrase',
+      matched_aliases: ['Waller Straße', 'Waller See', 'Rübekamp'],
+    });
+  });
+
   it('does not match unrelated substrings inside words', () => {
     const record: MatchableRecord = {
       title: 'Kosten steigen im Zentrum',

@@ -288,7 +288,9 @@ function datePartsToBerlinIso(
   ).toISOString();
 }
 
-function pageContainsOperationalNoticeText($: ReturnType<typeof load>): boolean {
+function pageContainsOperationalNoticeText(
+  $: ReturnType<typeof load>,
+): boolean {
   const text = normalizeWhitespace($('main, body').text());
 
   return (

@@ -51,6 +51,7 @@ The implementation creates these focused units:
 ## Task 1: Scaffold the strict TypeScript project
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`
 - Create: `eslint.config.js`
@@ -153,6 +154,7 @@ git commit -m "chore: scaffold strict TypeScript MCP project"
 ## Task 2: Define domain contracts, dates, configuration, and corridor matching
 
 **Files:**
+
 - Create: `src/domain/models.ts`
 - Create: `src/domain/result.ts`
 - Create: `src/shared/clock.ts`
@@ -171,13 +173,28 @@ git commit -m "chore: scaffold strict TypeScript MCP project"
 The tests must assert this behavior:
 
 ```ts
-expect(combineOutcomes([
-  { data: [1], sources: [], warnings: [] },
-  { data: [2], sources: [], warnings: [{ source: 'vmz_web', code: 'SOURCE_TIMEOUT', message: 'timed out', occurred_at: now, retryable: true }] },
-])).toMatchObject({ data: [1, 2], status: 'partial' });
+expect(
+  combineOutcomes([
+    { data: [1], sources: [], warnings: [] },
+    {
+      data: [2],
+      sources: [],
+      warnings: [
+        {
+          source: 'vmz_web',
+          code: 'SOURCE_TIMEOUT',
+          message: 'timed out',
+          occurred_at: now,
+          retryable: true,
+        },
+      ],
+    },
+  ]),
+).toMatchObject({ data: [1, 2], status: 'partial' });
 
-expect(parseBerlinRange('2026-10-25', '2026-10-25').end.toISOString())
-  .toBe('2026-10-25T22:59:59.999Z');
+expect(parseBerlinRange('2026-10-25', '2026-10-25').end.toISOString()).toBe(
+  '2026-10-25T22:59:59.999Z',
+);
 expect(intervalsOverlap(a, b)).toBe(true);
 ```
 
@@ -200,7 +217,10 @@ export interface SourceOutcome<T> {
   warnings: SourceWarning[];
 }
 
-export function envelope<T>(generatedAt: string, outcome: SourceOutcome<T>): ToolEnvelope<T> {
+export function envelope<T>(
+  generatedAt: string,
+  outcome: SourceOutcome<T>,
+): ToolEnvelope<T> {
   return {
     generated_at: generatedAt,
     timezone: 'Europe/Berlin',
@@ -235,7 +255,10 @@ export interface CorridorMatch {
   matched_aliases: string[];
 }
 
-export function matchCorridor(corridor: Corridor, record: MatchableRecord): CorridorMatch | undefined;
+export function matchCorridor(
+  corridor: Corridor,
+  record: MatchableRecord,
+): CorridorMatch | undefined;
 ```
 
 Create starter `central`, `east`, `west`, `north`, and `south` entries. Keep the mapping conservative, document that it is editable, and include public line IDs plus well-known districts, interchange stops, streets, and venues. Do not claim geometric intersection.
@@ -254,6 +277,7 @@ git commit -m "feat: add domain and corridor configuration"
 ## Task 3: Build the bounded, allow-listed source HTTP client
 
 **Files:**
+
 - Create: `src/sources/http-client.ts`
 - Create: `src/shared/logger.ts`
 - Test: `tests/unit/http-client.test.ts`
@@ -264,10 +288,12 @@ git commit -m "feat: add domain and corridor configuration"
 Use Undici `MockAgent` and assert:
 
 ```ts
-await expect(client.getText(configuredUrl, { expectedTypes: ['text/html'] }))
-  .resolves.toMatchObject({ body: '<main>ok</main>', finalUrl: configuredUrl });
-await expect(client.getText(unconfiguredUrl, { expectedTypes: ['text/html'] }))
-  .rejects.toMatchObject({ code: 'HOST_NOT_ALLOWED' });
+await expect(
+  client.getText(configuredUrl, { expectedTypes: ['text/html'] }),
+).resolves.toMatchObject({ body: '<main>ok</main>', finalUrl: configuredUrl });
+await expect(
+  client.getText(unconfiguredUrl, { expectedTypes: ['text/html'] }),
+).rejects.toMatchObject({ code: 'HOST_NOT_ALLOWED' });
 ```
 
 Also test timeout mapping, 503 retry then success, no retry for 404, response-size rejection, content-type rejection, and redirect rejection when the target host leaves the source allow-list. Inject a zero-delay sleeper and deterministic jitter into tests.
@@ -285,7 +311,10 @@ Expose only configured-source calls:
 ```ts
 export interface SourceHttpClient {
   getText(url: URL, policy: TextFetchPolicy): Promise<FetchResponse<string>>;
-  getBytes(url: URL, policy: BinaryFetchPolicy): Promise<FetchResponse<Uint8Array>>;
+  getBytes(
+    url: URL,
+    policy: BinaryFetchPolicy,
+  ): Promise<FetchResponse<Uint8Array>>;
 }
 ```
 
@@ -305,6 +334,7 @@ git commit -m "feat: add resilient public source client"
 ## Task 4: Add SQLite migrations and repositories
 
 **Files:**
+
 - Create: `src/storage/migrations.ts`
 - Create: `src/storage/database.ts`
 - Create: `src/storage/repositories.ts`
@@ -316,10 +346,15 @@ git commit -m "feat: add resilient public source client"
 Use a temporary database per test. Assert WAL mode, foreign keys, migration idempotency, source-state upsert, record deduplication by stable ID/content hash, snapshot selection at or before a requested time, and 30-day cleanup. The key historical assertion is:
 
 ```ts
-expect(repo.findSnapshotAtOrBefore('1', '2026-06-20T06:07:00Z', 15 * 60))
-  .toEqual({ snapshotAt: '2026-06-20T06:05:00Z', observations: expect.any(Array) });
-expect(repo.findSnapshotAtOrBefore('1', '2026-06-20T07:00:00Z', 15 * 60))
-  .toBeUndefined();
+expect(
+  repo.findSnapshotAtOrBefore('1', '2026-06-20T06:07:00Z', 15 * 60),
+).toEqual({
+  snapshotAt: '2026-06-20T06:05:00Z',
+  observations: expect.any(Array),
+});
+expect(
+  repo.findSnapshotAtOrBefore('1', '2026-06-20T07:00:00Z', 15 * 60),
+).toBeUndefined();
 ```
 
 - [ ] **Step 2: Run repository tests and verify RED**
@@ -346,6 +381,7 @@ git commit -m "feat: persist normalized operations data"
 ## Task 5: Implement VBN realtime ingestion and line health
 
 **Files:**
+
 - Create: `src/sources/vbn-realtime.ts`
 - Create: `src/services/line-health.ts`
 - Create: `tests/fixtures/vbn-realtime.json`
@@ -389,7 +425,10 @@ Expected: FAIL because aggregation and orchestration are missing.
 Expose:
 
 ```ts
-export interface GetLineHealthInput { line_ids: string[]; at_time?: string }
+export interface GetLineHealthInput {
+  line_ids: string[];
+  at_time?: string;
+}
 export class LineHealthService {
   get(input: GetLineHealthInput): Promise<SourceOutcome<LineHealth[]>>;
 }
@@ -411,6 +450,7 @@ git commit -m "feat: report persisted VBN line health"
 ## Task 6: Implement BSAG and VBN service notices
 
 **Files:**
+
 - Create: `src/sources/vbn-notices.ts`
 - Create: `src/sources/bsag-notices.ts`
 - Create: `src/services/service-notices.ts`
@@ -454,6 +494,7 @@ git commit -m "feat: aggregate BSAG and VBN notices"
 ## Task 7: Implement VMZ traffic, roadworks, and PDF ingestion
 
 **Files:**
+
 - Create: `src/sources/vmz.ts`
 - Create: `tests/fixtures/vmz-feed.xml`
 - Create: `tests/fixtures/vmz-roadworks.html`
@@ -465,11 +506,17 @@ git commit -m "feat: aggregate BSAG and VBN notices"
 Test RSS with namespaces and malformed items, HTML discovery of weekly/special PDF links, relative URL resolution, German roadwork date ranges, locations, detour terms, and normalized PDF text. Use this text-level assertion so parser logic does not depend on a PDF engine:
 
 ```ts
-expect(parseVmzRoadworksText('Steubenstraße — Vollsperrung vom 07.04.2026 bis 31.12.2028', provenance))
-  .toContainEqual(expect.objectContaining({
+expect(
+  parseVmzRoadworksText(
+    'Steubenstraße — Vollsperrung vom 07.04.2026 bis 31.12.2028',
+    provenance,
+  ),
+).toContainEqual(
+  expect.objectContaining({
     kind: 'roadwork',
     location_terms: expect.arrayContaining(['Steubenstraße']),
-  }));
+  }),
+);
 ```
 
 Add one adapter test that injects a fake `extractPdfText(bytes)` implementation and verifies byte fetch → extraction → normalization.
@@ -498,6 +545,7 @@ git commit -m "feat: ingest VMZ traffic and roadworks"
 ## Task 8: Implement Bremen events and external impact service
 
 **Files:**
+
 - Create: `src/sources/bremen-events.ts`
 - Create: `src/services/external-impacts.ts`
 - Create: `tests/fixtures/bremen-events.html`
@@ -538,6 +586,7 @@ git commit -m "feat: report corridor external impacts"
 ## Task 9: Implement deterministic passenger information
 
 **Files:**
+
 - Create: `src/services/passenger-information.ts`
 - Test: `tests/unit/passenger-information.test.ts`
 
@@ -546,11 +595,14 @@ git commit -m "feat: report corridor external impacts"
 Assert unique sorted line labels, whitespace normalization, HTML stripping, app output ≤240 characters, stop output ≤160 characters, web heading plus two concise paragraphs, cautious wording (`may be affected`) by default, and `manual_edit_required` when essential line/issue content cannot fit.
 
 ```ts
-expect(draftPassengerInformation({
-  line_ids: ['4', '1', '4'],
-  issue_summary: 'Roadworks may affect the eastern corridor tomorrow morning.',
-  channel: 'stop',
-}).text.length).toBeLessThanOrEqual(160);
+expect(
+  draftPassengerInformation({
+    line_ids: ['4', '1', '4'],
+    issue_summary:
+      'Roadworks may affect the eastern corridor tomorrow morning.',
+    channel: 'stop',
+  }).text.length,
+).toBeLessThanOrEqual(160);
 ```
 
 - [ ] **Step 2: Run tests and verify RED**
@@ -577,6 +629,7 @@ git commit -m "feat: draft bounded passenger information"
 ## Task 10: Implement explainable risk scoring and shift briefs
 
 **Files:**
+
 - Create: `src/services/risk.ts`
 - Create: `src/services/shift-brief.ts`
 - Test: `tests/unit/risk.test.ts`
@@ -620,6 +673,7 @@ git commit -m "feat: build explainable shift risk briefs"
 ## Task 11: Register and contract-test all MCP tools
 
 **Files:**
+
 - Create: `src/mcp/presenter.ts`
 - Create: `src/mcp/server.ts`
 - Test: `tests/unit/presenter.test.ts`
@@ -640,11 +694,31 @@ Expected: FAIL with unresolved MCP server.
 Create a fresh `McpServer(SERVER_INFO)` per transport connection/request and register:
 
 ```ts
-registerTool('get_line_health', { inputSchema, outputSchema, description }, handler);
-registerTool('get_external_impacts', { inputSchema, outputSchema, description }, handler);
-registerTool('get_service_notices', { inputSchema, outputSchema, description }, handler);
-registerTool('build_shift_brief', { inputSchema, outputSchema, description }, handler);
-registerTool('draft_passenger_information', { inputSchema, outputSchema, description }, handler);
+registerTool(
+  'get_line_health',
+  { inputSchema, outputSchema, description },
+  handler,
+);
+registerTool(
+  'get_external_impacts',
+  { inputSchema, outputSchema, description },
+  handler,
+);
+registerTool(
+  'get_service_notices',
+  { inputSchema, outputSchema, description },
+  handler,
+);
+registerTool(
+  'build_shift_brief',
+  { inputSchema, outputSchema, description },
+  handler,
+);
+registerTool(
+  'draft_passenger_information',
+  { inputSchema, outputSchema, description },
+  handler,
+);
 ```
 
 Use Zod 4 schemas with strict objects, input bounds, ISO date/datetime refinement, and deduplicated arrays. Convert `InputError` to an MCP error result. Preserve partial upstream outcomes as normal results. Presenter text must be concise and include freshness plus warnings; put the full envelope in `structuredContent` and JSON-stringify the same envelope in a text block for clients that ignore structured output.
@@ -663,6 +737,7 @@ git commit -m "feat: expose operations briefing MCP tools"
 ## Task 12: Compose the app and expose stdio and secure Streamable HTTP
 
 **Files:**
+
 - Create: `src/app.ts`
 - Create: `src/transports/stdio.ts`
 - Create: `src/transports/http.ts`
@@ -705,6 +780,7 @@ git commit -m "feat: serve MCP over stdio and HTTP"
 ## Task 13: Add operations packaging, documentation, CI, and live smoke tests
 
 **Files:**
+
 - Create: `.env.example`
 - Create: `Dockerfile`
 - Create: `.dockerignore`
@@ -772,6 +848,7 @@ git commit -m "docs: package and operate briefing server"
 ## Task 14: Final specification audit and release verification
 
 **Files:**
+
 - Modify only files required to correct audit findings.
 
 - [ ] **Step 1: Audit every acceptance criterion against tests**

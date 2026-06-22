@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -14,6 +14,12 @@ import {
   ExternalImpactService,
   type ExternalImpactSource,
 } from '../../src/services/external-impacts.js';
+import type {
+  BinaryFetchPolicy,
+  FetchResponse,
+  TextFetchPolicy,
+} from '../../src/sources/http-client.js';
+import { VmzSource } from '../../src/sources/vmz.js';
 
 interface Harness {
   close(): void;
@@ -155,6 +161,75 @@ function buildOutcome(
   };
 }
 
+const weeklyRoadworksTextFixture = readFileSync(
+  new URL('../fixtures/vmz-weekly-roadworks.txt', import.meta.url),
+  'utf8',
+);
+const specialRoadworksTextFixture = readFileSync(
+  new URL('../fixtures/vmz-special-steubenstrasse.txt', import.meta.url),
+  'utf8',
+);
+const vmzRoadworksHtmlFixture = readFileSync(
+  new URL('../fixtures/vmz-roadworks.html', import.meta.url),
+  'utf8',
+);
+const vmzFeedFixture = readFileSync(
+  new URL('../fixtures/vmz-feed.xml', import.meta.url),
+  'utf8',
+);
+
+class FixtureVmzClient {
+  readonly #textResponses: Map<string, string>;
+  readonly #byteResponses: Map<string, Uint8Array>;
+
+  constructor(options: {
+    textResponses: Record<string, string>;
+    byteResponses: Record<string, Uint8Array>;
+  }) {
+    this.#textResponses = new Map(Object.entries(options.textResponses));
+    this.#byteResponses = new Map(Object.entries(options.byteResponses));
+  }
+
+  getText(url: URL, policy: TextFetchPolicy): Promise<FetchResponse<string>> {
+    void policy;
+    const body = this.#textResponses.get(url.toString());
+
+    if (body === undefined) {
+      throw new Error(`Unexpected text URL ${url.toString()}`);
+    }
+
+    return Promise.resolve({
+      body,
+      finalUrl: new URL(url),
+      contentType: 'text/html',
+      statusCode: 200,
+      attempts: 1,
+      redirectCount: 0,
+    });
+  }
+
+  getBytes(
+    url: URL,
+    policy: BinaryFetchPolicy,
+  ): Promise<FetchResponse<Uint8Array>> {
+    void policy;
+    const body = this.#byteResponses.get(url.toString());
+
+    if (body === undefined) {
+      throw new Error(`Unexpected byte URL ${url.toString()}`);
+    }
+
+    return Promise.resolve({
+      body,
+      finalUrl: new URL(url),
+      contentType: 'application/pdf',
+      statusCode: 200,
+      attempts: 1,
+      redirectCount: 0,
+    });
+  }
+}
+
 describe('ExternalImpactService', () => {
   it('refreshes sources concurrently, filters by date and corridor, deduplicates impacts, and orders by severity', async () => {
     const harness = createHarness();
@@ -254,22 +329,17 @@ describe('ExternalImpactService', () => {
         'vmz-east-1',
         'event-east',
       ]);
-      expect(result.data[0]?.corridor_matches).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            corridor_id: 'east',
-            matched_aliases: ['Peterswerder'],
-          }),
-        ]),
+      const firstEastMatch = result.data[0]?.corridor_matches.find(
+        (match) => match.corridor_id === 'east',
       );
-      expect(result.data[1]?.corridor_matches).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            corridor_id: 'east',
-            matched_aliases: ['Weserpark'],
-          }),
-        ]),
+      const secondEastMatch = result.data[1]?.corridor_matches.find(
+        (match) => match.corridor_id === 'east',
       );
+
+      expect(firstEastMatch?.matched_aliases).toEqual(
+        expect.arrayContaining(['Peterswerder']),
+      );
+      expect(secondEastMatch?.matched_aliases).toEqual(['Weserpark']);
     } finally {
       harness.close();
     }
@@ -404,6 +474,94 @@ describe('ExternalImpactService', () => {
           date_to: '2026-07-05',
         }),
       ).rejects.toBeInstanceOf(InputError);
+    } finally {
+      harness.close();
+    }
+  });
+
+  it('returns a VMZ PDF-backed west impact for the README example payload', async () => {
+    const harness = createHarness();
+    const clock = new TestClock('2026-06-22T06:00:00.000Z');
+    const corridors = loadCorridors(
+      join(process.cwd(), 'config/corridors.json'),
+    );
+    const currentUrl = new URL('https://fixtures.example/vmz/current');
+    const previewUrl = new URL('https://fixtures.example/vmz/preview');
+    const overviewUrl = new URL('https://fixtures.example/vmz/overview');
+    const rssUrl = new URL('https://fixtures.example/vmz/feed.rss');
+    const client = new FixtureVmzClient({
+      textResponses: {
+        [currentUrl.toString()]: vmzRoadworksHtmlFixture,
+        [previewUrl.toString()]: vmzRoadworksHtmlFixture,
+        [overviewUrl.toString()]: vmzRoadworksHtmlFixture,
+        [rssUrl.toString()]: vmzFeedFixture,
+      },
+      byteResponses: {
+        'https://fixtures.example/index.php?eID=dumpFile&f=126593&t=f&token=weekly-token':
+          new TextEncoder().encode('vmz-weekly-pdf'),
+        'https://fixtures.example/media/verkehr/sondermeldung.pdf':
+          new TextEncoder().encode('vmz-special-pdf'),
+      },
+    });
+    const vmzSource = new VmzSource({
+      client,
+      clock,
+      currentUrl,
+      overviewUrl,
+      previewUrl,
+      rssUrl,
+      extractPdfText: (bytes) => {
+        const marker = new TextDecoder().decode(bytes);
+
+        if (marker === 'vmz-weekly-pdf') {
+          return Promise.resolve(weeklyRoadworksTextFixture);
+        }
+
+        if (marker === 'vmz-special-pdf') {
+          return Promise.resolve(specialRoadworksTextFixture);
+        }
+
+        throw new Error(`Unexpected VMZ PDF marker ${marker}`);
+      },
+    });
+    const service = new ExternalImpactService({
+      clock,
+      corridors,
+      repositories: harness.repositories,
+      sources: [
+        {
+          sourceIds: ['vmz_rss', 'vmz_web', 'vmz_pdf'],
+          fetch: () => vmzSource.fetch(),
+        },
+        {
+          sourceIds: ['bremen_events'],
+          fetch: () =>
+            Promise.resolve({
+              data: [],
+              sources: [
+                {
+                  source: 'bremen_events',
+                  fetched_at: clock.now().toISOString(),
+                  age_seconds: 0,
+                  stale: false,
+                },
+              ],
+              warnings: [],
+            }),
+        },
+      ],
+    });
+
+    try {
+      const result = await service.get({
+        corridors: ['west'],
+        date_from: '2026-06-19',
+        date_to: '2026-06-19',
+      });
+
+      expect(
+        result.data.some((impact) => impact.provenance.source === 'vmz_pdf'),
+      ).toBe(true);
     } finally {
       harness.close();
     }

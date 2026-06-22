@@ -371,9 +371,12 @@ describe('parseVbnRealtimeJson', () => {
       }),
     );
     expect(outcome.warnings).toEqual([]);
-    expect(agent.getCallHistory()?.calls().map((call) => call.path)).toEqual([
-      protobufUrl.pathname,
-    ]);
+    expect(
+      agent
+        .getCallHistory()
+        ?.calls()
+        .map((call) => call.path),
+    ).toEqual([protobufUrl.pathname]);
   });
 
   it('falls back to JSON when protobuf fetch or decode fails', async () => {
@@ -426,10 +429,12 @@ describe('parseVbnRealtimeJson', () => {
         ) as string,
       }),
     );
-    expect(agent.getCallHistory()?.calls().map((call) => call.path)).toEqual([
-      protobufUrl.pathname,
-      jsonUrl.pathname,
-    ]);
+    expect(
+      agent
+        .getCallHistory()
+        ?.calls()
+        .map((call) => call.path),
+    ).toEqual([protobufUrl.pathname, jsonUrl.pathname]);
   });
 
   it('uses JSON only when no protobuf URL is configured', async () => {
@@ -465,9 +470,12 @@ describe('parseVbnRealtimeJson', () => {
         delay_seconds: 420,
       }),
     );
-    expect(agent.getCallHistory()?.calls().map((call) => call.path)).toEqual([
-      jsonUrl.pathname,
-    ]);
+    expect(
+      agent
+        .getCallHistory()
+        ?.calls()
+        .map((call) => call.path),
+    ).toEqual([jsonUrl.pathname]);
   });
 
   it('fetches valid JSON over 10 MB and under 25 MB when JSON is used', async () => {

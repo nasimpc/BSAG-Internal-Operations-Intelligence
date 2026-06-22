@@ -56,12 +56,12 @@ const FIXTURES = {
     ),
     contentType: 'text/html',
   },
-  '/media/verkehr/baustellenpresse/baustellenpresse_kw25.pdf': {
-    body: Buffer.from('%PDF-1.4\n% fixture\n'),
+  '/index.php?eID=dumpFile&f=126593&t=f&token=weekly-token': {
+    body: Buffer.from('vmz-weekly-pdf'),
     contentType: 'application/pdf',
   },
   '/media/verkehr/sondermeldung.pdf': {
-    body: Buffer.from('%PDF-1.4\n% fixture\n'),
+    body: Buffer.from('vmz-special-pdf'),
     contentType: 'application/pdf',
   },
 } as const;

@@ -22,8 +22,12 @@ const roadworksHtmlFixture = readFileSync(
   new URL('../fixtures/vmz-roadworks.html', import.meta.url),
   'utf8',
 );
-const roadworksTextFixture = readFileSync(
-  new URL('../fixtures/vmz-roadworks.txt', import.meta.url),
+const weeklyRoadworksTextFixture = readFileSync(
+  new URL('../fixtures/vmz-weekly-roadworks.txt', import.meta.url),
+  'utf8',
+);
+const specialRoadworksTextFixture = readFileSync(
+  new URL('../fixtures/vmz-special-steubenstrasse.txt', import.meta.url),
   'utf8',
 );
 
@@ -129,39 +133,99 @@ describe('parseVmzFeedXml', () => {
 });
 
 describe('discoverVmzPdfUrls', () => {
-  it('resolves relative URLs and deduplicates discovered PDF links', () => {
+  it('accepts dumpFile anchors by PDF file name and keeps direct PDF links', () => {
     const urls = discoverVmzPdfUrls(roadworksHtmlFixture, currentUrl);
 
     expect(urls.map((url) => url.toString())).toEqual([
-      'https://vmz.bremen.de/media/verkehr/baustellenpresse/baustellenpresse_kw25.pdf',
+      'https://vmz.bremen.de/index.php?eID=dumpFile&f=126593&t=f&token=weekly-token',
       'https://vmz.bremen.de/media/verkehr/sondermeldung.pdf',
     ]);
   });
 });
 
 describe('parseVmzRoadworksText', () => {
-  it('extracts German date ranges, locations, and detour terms from normalized PDF text', () => {
+  it('parses weekly bulletins into multiple VMZ records with per-record feature URLs', () => {
     const provenance = {
       source: 'vmz_pdf' as const,
       sourceUrl:
-        'https://vmz.bremen.de/media/verkehr/baustellenpresse/baustellenpresse_kw25.pdf',
+        'https://vmz.bremen.de/index.php?eID=dumpFile&f=126593&t=f&token=weekly-token',
       fetchedAt,
     };
-    const parsed = parseVmzRoadworksText(roadworksTextFixture, provenance);
-    const roadwork = parsed.find((record) => record.kind === 'roadwork');
-    const detour = parsed.find((record) => record.kind === 'detour');
+    const parsed = parseVmzRoadworksText(
+      weeklyRoadworksTextFixture,
+      provenance,
+    );
+    const westRecord = parsed.find((record) =>
+      record.title.includes('Alte Waller Straße'),
+    );
+    const eastRecord = parsed.find((record) =>
+      record.title.includes('Hastedter Heerstraße'),
+    );
 
-    expect(roadwork).toBeDefined();
-    expect(roadwork?.location_terms).toContain('Steubenstraße');
-    expect(roadwork?.starts_at).toBe('2026-04-06T22:00:00.000Z');
-    expect(roadwork?.ends_at).toBe('2028-12-31T22:59:59.999Z');
-    expect(detour).toBeDefined();
-    expect(detour?.location_terms).toContain('Utbremer Ring');
+    expect(parsed).toHaveLength(2);
+    expect(westRecord).toMatchObject({
+      kind: 'roadwork',
+      starts_at: '2026-06-18T22:00:00.000Z',
+      ends_at: '2026-06-19T21:59:59.999Z',
+      provenance: {
+        source: 'vmz_pdf',
+        sourceUrl:
+          'https://vmz.bremen.de/baustellen/alte-waller-strasse-waller-see',
+      },
+    });
+    expect(westRecord?.summary).toContain(
+      'Zeitraum: 19.06.2026 - 19.06.2026 tagsüber.',
+    );
+    expect(westRecord?.location_terms).toEqual(
+      expect.arrayContaining([
+        'Alte Waller Straße',
+        'zwischen Waller See und Rübekamp',
+        'stadteinwärts',
+      ]),
+    );
+    expect(eastRecord).toMatchObject({
+      kind: 'roadwork',
+      starts_at: '2026-06-20T22:00:00.000Z',
+      ends_at: '2026-06-23T21:59:59.999Z',
+      provenance: {
+        source: 'vmz_pdf',
+        sourceUrl:
+          'https://vmz.bremen.de/baustellen/hastedter-heerstrasse-vahrer-strasse',
+      },
+    });
+    expect(eastRecord?.summary).toContain('Vahrer Straße / Steubenstraße');
+  });
+
+  it('parses the Steubenstraße special press release with Q4 end dates', () => {
+    const provenance = {
+      source: 'vmz_pdf' as const,
+      sourceUrl: 'https://vmz.bremen.de/media/verkehr/sondermeldung.pdf',
+      fetchedAt,
+    };
+    const parsed = parseVmzRoadworksText(
+      specialRoadworksTextFixture,
+      provenance,
+    );
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]).toMatchObject({
+      kind: 'roadwork',
+      title: 'Vollsperrung in der Steubenstraße ab April 2026',
+      starts_at: '2026-04-06T22:00:00.000Z',
+      ends_at: '2028-12-31T22:59:59.999Z',
+      provenance: {
+        source: 'vmz_pdf',
+        sourceUrl: 'https://vmz.bremen.de/media/verkehr/sondermeldung.pdf',
+      },
+    });
+    expect(parsed[0]?.summary).toContain('Kurfürstenallee');
+    expect(parsed[0]?.summary).toContain('Vahrer Straße');
+    expect(parsed[0]?.summary).toContain('Hastedter Heerstraße');
   });
 });
 
 describe('VmzSource', () => {
-  it('fetches RSS and PDF bytes, normalizes extracted text, and keeps valid records when one PDF fails', async () => {
+  it('fetches RSS and VMZ PDFs, keeps weekly records, and warns when one PDF extraction fails', async () => {
     const client = new StubVmzClient({
       textResponses: {
         [rssUrl.toString()]: feedFixture,
@@ -170,10 +234,10 @@ describe('VmzSource', () => {
         [overviewUrl.toString()]: roadworksHtmlFixture,
       },
       byteResponses: {
-        'https://vmz.bremen.de/media/verkehr/baustellenpresse/baustellenpresse_kw25.pdf':
-          new TextEncoder().encode('kw25'),
+        'https://vmz.bremen.de/index.php?eID=dumpFile&f=126593&t=f&token=weekly-token':
+          new TextEncoder().encode('weekly'),
         'https://vmz.bremen.de/media/verkehr/sondermeldung.pdf':
-          new TextEncoder().encode('sondermeldung'),
+          new TextEncoder().encode('special'),
       },
     });
     const extractedBytes: string[] = [];
@@ -188,35 +252,43 @@ describe('VmzSource', () => {
         const marker = new TextDecoder().decode(bytes);
         extractedBytes.push(marker);
 
-        if (marker === 'sondermeldung') {
+        if (marker === 'special') {
           throw new Error('synthetic extractor failure');
         }
 
-        return Promise.resolve(
-          `Steubenstraße\n—   Vollsperrung vom 07.04.2026 bis 31.12.2028`,
-        );
+        return Promise.resolve(weeklyRoadworksTextFixture);
       },
     });
 
     const outcome = await source.fetch();
     const titles = outcome.data.map((impact) => impact.title);
-    const roadworksImpact = outcome.data.find((impact) =>
-      impact.title.includes('Steubenstraße'),
+    const westImpact = outcome.data.find((impact) =>
+      impact.title.includes('Alte Waller Straße'),
+    );
+    const eastImpact = outcome.data.find((impact) =>
+      impact.title.includes('Hastedter Heerstraße'),
     );
 
-    expect(extractedBytes.sort()).toEqual(['kw25', 'sondermeldung']);
+    expect(extractedBytes.sort()).toEqual(['special', 'weekly']);
     expect(titles).toEqual(
       expect.arrayContaining([
         'A27: Unfall zwischen Horn-Lehe und Vahr',
         'B75: Baustelle an der Stephanibrücke',
-        'Steubenstraße — Vollsperrung',
+        'Alte Waller Straße — Fahrbahnsanierung mit halbseitiger Sperrung',
+        'Hastedter Heerstraße — Baustelle mit Spurverengung',
       ]),
     );
-    expect(roadworksImpact).toBeDefined();
-    expect(roadworksImpact?.category).toBe('roadworks');
-    expect(roadworksImpact?.corridor_ids).toEqual([]);
-    expect(roadworksImpact?.severity).toBe('high');
-    expect(roadworksImpact?.provenance.source).toBe('vmz_pdf');
+    expect(westImpact).toBeDefined();
+    expect(westImpact?.category).toBe('roadworks');
+    expect(westImpact?.corridor_ids).toEqual([]);
+    expect(westImpact?.severity).toBe('low');
+    expect(westImpact?.provenance.source).toBe('vmz_pdf');
+    expect(westImpact?.provenance.sourceUrl).toBe(
+      'https://vmz.bremen.de/baustellen/alte-waller-strasse-waller-see',
+    );
+    expect(eastImpact?.provenance.sourceUrl).toBe(
+      'https://vmz.bremen.de/baustellen/hastedter-heerstrasse-vahrer-strasse',
+    );
     expect(outcome.warnings).toContainEqual(
       expect.objectContaining({
         source: 'vmz_pdf',

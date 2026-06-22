@@ -1,0 +1,15 @@
+Ort: Alte Waller Straße
+Lage: zwischen Waller See und Rübekamp
+Richtung: stadteinwärts
+Beschreibung: Fahrbahnsanierung mit halbseitiger Sperrung
+Grund: Asphaltarbeiten
+Zeitraum: 19.06.2026 - 19.06.2026 tagsüber
+Im Internet: vmz.bremen.de/baustellen/alte-waller-strasse-waller-see
+
+Ort: Hastedter Heerstraße
+Lage: an der Vahrer Straße / Steubenstraße
+Richtung: beide Richtungen
+Beschreibung: Baustelle mit Spurverengung
+Grund: Leitungsarbeiten
+Zeitraum: 21.06.2026 - 23.06.2026 nachts
+Im Internet: https://vmz.bremen.de/baustellen/hastedter-heerstrasse-vahrer-strasse

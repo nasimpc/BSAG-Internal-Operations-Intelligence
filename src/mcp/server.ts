@@ -574,9 +574,10 @@ function buildLineHealthCitations(
   return citation === undefined ? [] : finalizeCitations([citation]);
 }
 
-function buildItemProvenanceCitations<
-  T extends { title: string; provenance: Provenance },
->(items: readonly T[], claimPath: (index: number) => string): Citation[] {
+function buildItemProvenanceCitations(
+  items: readonly { title: string; provenance: Provenance }[],
+  claimPath: (index: number) => string,
+): Citation[] {
   return finalizeCitations(
     items.map((item, index) =>
       provenanceCitationDraft(item.provenance, item.title, [claimPath(index)]),
@@ -690,19 +691,13 @@ function catalogEntryForSource(
       return {
         title: 'VMZ Bremen roadworks',
         source_url: sourceUrls.vmzCurrentUrl,
-        ...alternateUrls([
-          sourceUrls.vmzPreviewUrl,
-          sourceUrls.vmzOverviewUrl,
-        ]),
+        ...alternateUrls([sourceUrls.vmzPreviewUrl, sourceUrls.vmzOverviewUrl]),
       };
     case 'vmz_pdf':
       return {
         title: 'VMZ Bremen roadworks PDFs',
         source_url: sourceUrls.vmzOverviewUrl,
-        ...alternateUrls([
-          sourceUrls.vmzCurrentUrl,
-          sourceUrls.vmzPreviewUrl,
-        ]),
+        ...alternateUrls([sourceUrls.vmzCurrentUrl, sourceUrls.vmzPreviewUrl]),
       };
     case 'bremen_events':
       return {
