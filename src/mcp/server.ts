@@ -3,8 +3,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 
 import type {
+  Citation,
   LineHealth,
+  Provenance,
   ServiceNotice,
+  SourceId,
+  SourceStatus,
   ToolEnvelope,
 } from '../domain/models.js';
 import { envelope, type SourceOutcome } from '../domain/result.js';
@@ -63,6 +67,20 @@ const provenanceSchema = z
     fetchedAt: isoDateTimeSchema,
     publishedAt: isoDateTimeSchema.optional(),
     contentHash: z.string().min(1).optional(),
+  })
+  .strict();
+
+const citationSchema = z
+  .object({
+    id: z.string().min(1),
+    source: sourceIdSchema,
+    title: z.string().min(1),
+    source_url: z.url(),
+    alternate_urls: z.array(z.url()).min(1).optional(),
+    fetched_at: isoDateTimeSchema.optional(),
+    published_at: isoDateTimeSchema.optional(),
+    content_hash: z.string().min(1).optional(),
+    claim_paths: z.array(z.string().min(1)),
   })
   .strict();
 
@@ -237,6 +255,7 @@ function toolEnvelopeSchema<T extends z.ZodType>(dataSchema: T) {
       timezone: z.literal('Europe/Berlin'),
       status: z.enum(['complete', 'partial']),
       data: dataSchema,
+      citations: z.array(citationSchema),
       sources: z.array(sourceStatusSchema),
       warnings: z.array(sourceWarningSchema),
     })
@@ -298,6 +317,18 @@ const draftPassengerInformationOutputSchema = toolEnvelopeSchema(
   passengerInformationDraftSchema,
 );
 
+export interface OperationsBriefingSourceUrls {
+  vbnRealtimeJsonUrl: string;
+  vbnRealtimeProtobufUrl: string;
+  vbnNoticesUrl: string;
+  bsagNewsUrl: string;
+  vmzCurrentUrl: string;
+  vmzPreviewUrl: string;
+  vmzOverviewUrl: string;
+  vmzRssUrl: string;
+  bremenEventsUrl: string;
+}
+
 export interface OperationsBriefingMcpServerOptions {
   clock: Clock;
   draftPassengerInformation(
@@ -317,6 +348,7 @@ export interface OperationsBriefingMcpServerOptions {
   shiftBriefService: {
     build(input: ShiftBriefBuildInput): Promise<SourceOutcome<ShiftBrief>>;
   };
+  sourceUrls: OperationsBriefingSourceUrls;
 }
 
 export function createOperationsBriefingMcpServer(
@@ -340,7 +372,11 @@ export function createOperationsBriefingMcpServer(
         return presentToolEnvelope({
           title: 'Line health',
           summary: summarizeLineHealth(serviceInput, outcome),
-          envelope: buildEnvelope(options.clock, outcome),
+          envelope: buildEnvelope(
+            options.clock,
+            outcome,
+            buildLineHealthCitations(outcome, options.sourceUrls),
+          ),
         });
       } catch (error) {
         return toolErrorResult(error);
@@ -364,7 +400,13 @@ export function createOperationsBriefingMcpServer(
         return presentToolEnvelope({
           title: 'External impacts',
           summary: summarizeExternalImpacts(serviceInput, outcome),
-          envelope: buildEnvelope(options.clock, outcome),
+          envelope: buildEnvelope(
+            options.clock,
+            outcome,
+            buildItemProvenanceCitations(outcome.data, (index) =>
+              dataPath(index),
+            ),
+          ),
         });
       } catch (error) {
         return toolErrorResult(error);
@@ -388,7 +430,13 @@ export function createOperationsBriefingMcpServer(
         return presentToolEnvelope({
           title: 'Service notices',
           summary: summarizeServiceNotices(serviceInput, outcome),
-          envelope: buildEnvelope(options.clock, outcome),
+          envelope: buildEnvelope(
+            options.clock,
+            outcome,
+            buildItemProvenanceCitations(outcome.data, (index) =>
+              dataPath(index),
+            ),
+          ),
         });
       } catch (error) {
         return toolErrorResult(error);
@@ -412,7 +460,11 @@ export function createOperationsBriefingMcpServer(
         return presentToolEnvelope({
           title: 'Shift brief',
           summary: summarizeShiftBrief(serviceInput, outcome),
-          envelope: buildEnvelope(options.clock, outcome),
+          envelope: buildEnvelope(
+            options.clock,
+            outcome,
+            buildShiftBriefCitations(outcome, options.sourceUrls),
+          ),
         });
       } catch (error) {
         return toolErrorResult(error);
@@ -495,8 +547,220 @@ function toShiftBriefInput(
 function buildEnvelope<T>(
   clock: Clock,
   outcome: SourceOutcome<T>,
+  citations: Citation[] = outcome.citations ?? [],
 ): ToolEnvelope<T> {
-  return envelope(clock.now().toISOString(), outcome);
+  return envelope(clock.now().toISOString(), {
+    ...outcome,
+    citations,
+  });
+}
+
+type CitationDraft = Omit<Citation, 'id'>;
+
+function buildLineHealthCitations(
+  outcome: SourceOutcome<LineHealth[]>,
+  sourceUrls: OperationsBriefingSourceUrls,
+): Citation[] {
+  const status = outcome.sources.find(
+    (sourceStatus) => sourceStatus.source === 'vbn_realtime',
+  );
+  const citation = catalogCitationDraft(
+    'vbn_realtime',
+    sourceUrls,
+    claimPathsForData(outcome.data),
+    status,
+  );
+
+  return citation === undefined ? [] : finalizeCitations([citation]);
+}
+
+function buildItemProvenanceCitations<
+  T extends { title: string; provenance: Provenance },
+>(items: readonly T[], claimPath: (index: number) => string): Citation[] {
+  return finalizeCitations(
+    items.map((item, index) =>
+      provenanceCitationDraft(item.provenance, item.title, [claimPath(index)]),
+    ),
+  );
+}
+
+function buildShiftBriefCitations(
+  outcome: SourceOutcome<ShiftBrief>,
+  sourceUrls: OperationsBriefingSourceUrls,
+): Citation[] {
+  return finalizeCitations([
+    ...outcome.data.major_events.map((event, index) =>
+      provenanceCitationDraft(event.provenance, event.title, [
+        `/data/major_events/${String(index)}`,
+      ]),
+    ),
+    ...sourceStatusCitationDrafts(outcome.sources, sourceUrls, ['/data']),
+  ]);
+}
+
+function sourceStatusCitationDrafts(
+  statuses: readonly SourceStatus[],
+  sourceUrls: OperationsBriefingSourceUrls,
+  claimPaths: string[],
+): CitationDraft[] {
+  const citations: CitationDraft[] = [];
+  const seen = new Set<SourceId>();
+
+  for (const status of statuses) {
+    if (seen.has(status.source)) {
+      continue;
+    }
+
+    seen.add(status.source);
+
+    const citation = catalogCitationDraft(
+      status.source,
+      sourceUrls,
+      claimPaths,
+      status,
+    );
+
+    if (citation !== undefined) {
+      citations.push(citation);
+    }
+  }
+
+  return citations;
+}
+
+function catalogCitationDraft(
+  source: SourceId,
+  sourceUrls: OperationsBriefingSourceUrls,
+  claimPaths: string[],
+  status?: SourceStatus,
+): CitationDraft | undefined {
+  const entry = catalogEntryForSource(source, sourceUrls);
+
+  if (entry === undefined) {
+    return undefined;
+  }
+
+  return {
+    source,
+    title: entry.title,
+    source_url: entry.source_url,
+    ...(entry.alternate_urls === undefined
+      ? {}
+      : { alternate_urls: entry.alternate_urls }),
+    ...(status?.fetched_at === undefined
+      ? {}
+      : { fetched_at: status.fetched_at }),
+    claim_paths: claimPaths,
+  };
+}
+
+function catalogEntryForSource(
+  source: SourceId,
+  sourceUrls: OperationsBriefingSourceUrls,
+):
+  | {
+      title: string;
+      source_url: string;
+      alternate_urls?: string[];
+    }
+  | undefined {
+  switch (source) {
+    case 'vbn_realtime':
+      return {
+        title: 'VBN GTFS-Realtime',
+        source_url: sourceUrls.vbnRealtimeProtobufUrl,
+        ...alternateUrls([sourceUrls.vbnRealtimeJsonUrl]),
+      };
+    case 'vbn_notices':
+      return {
+        title: 'VBN service notices',
+        source_url: sourceUrls.vbnNoticesUrl,
+      };
+    case 'bsag':
+      return {
+        title: 'BSAG Aktuelles',
+        source_url: sourceUrls.bsagNewsUrl,
+      };
+    case 'vmz_rss':
+      return {
+        title: 'VMZ Bremen traffic RSS',
+        source_url: sourceUrls.vmzRssUrl,
+      };
+    case 'vmz_web':
+      return {
+        title: 'VMZ Bremen roadworks',
+        source_url: sourceUrls.vmzCurrentUrl,
+        ...alternateUrls([
+          sourceUrls.vmzPreviewUrl,
+          sourceUrls.vmzOverviewUrl,
+        ]),
+      };
+    case 'vmz_pdf':
+      return {
+        title: 'VMZ Bremen roadworks PDFs',
+        source_url: sourceUrls.vmzOverviewUrl,
+        ...alternateUrls([
+          sourceUrls.vmzCurrentUrl,
+          sourceUrls.vmzPreviewUrl,
+        ]),
+      };
+    case 'bremen_events':
+      return {
+        title: 'Bremen event listings',
+        source_url: sourceUrls.bremenEventsUrl,
+      };
+  }
+}
+
+function provenanceCitationDraft(
+  provenance: Provenance,
+  title: string,
+  claimPaths: string[],
+): CitationDraft {
+  return {
+    source: provenance.source,
+    title,
+    source_url: provenance.sourceUrl,
+    fetched_at: provenance.fetchedAt,
+    ...(provenance.publishedAt === undefined
+      ? {}
+      : { published_at: provenance.publishedAt }),
+    ...(provenance.contentHash === undefined
+      ? {}
+      : { content_hash: provenance.contentHash }),
+    claim_paths: claimPaths,
+  };
+}
+
+function finalizeCitations(citations: CitationDraft[]): Citation[] {
+  return citations.map((citation, index) => ({
+    id: `cite-${String(index + 1)}`,
+    ...citation,
+  }));
+}
+
+function claimPathsForData(data: readonly unknown[]): string[] {
+  return data.length === 0
+    ? ['/data']
+    : data.map((_, index) => dataPath(index));
+}
+
+function dataPath(index: number): string {
+  return `/data/${String(index)}`;
+}
+
+function dedupeUrls(urls: readonly string[]): string[] | undefined {
+  const deduped = [...new Set(urls.filter((url) => url.length > 0))];
+
+  return deduped.length === 0 ? undefined : deduped;
+}
+
+function alternateUrls(
+  urls: readonly string[],
+): { alternate_urls: string[] } | Record<string, never> {
+  const deduped = dedupeUrls(urls);
+
+  return deduped === undefined ? {} : { alternate_urls: deduped };
 }
 
 function summarizeLineHealth(

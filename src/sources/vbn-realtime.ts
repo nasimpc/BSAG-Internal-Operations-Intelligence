@@ -12,7 +12,7 @@ import {
 
 const JSON_FETCH_POLICY: TextFetchPolicy = {
   expectedTypes: ['application/json', 'text/plain'],
-  maxBytes: 10_000_000,
+  maxBytes: 25_000_000,
   timeoutMs: 10_000,
 };
 
@@ -22,7 +22,7 @@ const PROTOBUF_FETCH_POLICY: BinaryFetchPolicy = {
     'application/protobuf',
     'application/x-protobuf',
   ],
-  maxBytes: 2_000_000,
+  maxBytes: 25_000_000,
   timeoutMs: 10_000,
 };
 
@@ -115,43 +115,47 @@ export class VbnRealtimeSource {
   async fetch(): Promise<SourceOutcome<VbnRealtimeRecord[]>> {
     const fetchedAt = this.#clock.now().toISOString();
 
-    try {
-      const response = await this.#client.getText(
-        this.#jsonUrl,
-        JSON_FETCH_POLICY,
-      );
+    if (this.#protobufUrl !== undefined) {
+      try {
+        const response = await this.#client.getBytes(
+          this.#protobufUrl,
+          PROTOBUF_FETCH_POLICY,
+        );
 
-      return parseVbnRealtimeJson(response.body, fetchedAt);
-    } catch (jsonError) {
-      if (
-        this.#protobufUrl === undefined ||
-        !shouldFallbackToProtobuf(jsonError)
-      ) {
-        throw jsonError;
+        return decodeGtfsRealtime(response.body, fetchedAt);
+      } catch (protobufError) {
+        const outcome = await this.fetchJson(fetchedAt);
+
+        return {
+          ...outcome,
+          warnings: [
+            warning(
+              'vbn_realtime',
+              'PROTOBUF_SOURCE_FALLBACK',
+              `Fell back to JSON after protobuf failure: ${describeError(protobufError)}`,
+              {
+                occurredAt: fetchedAt,
+                retryable: isRetryableError(protobufError),
+              },
+            ),
+            ...outcome.warnings,
+          ],
+        };
       }
-
-      const response = await this.#client.getBytes(
-        this.#protobufUrl,
-        PROTOBUF_FETCH_POLICY,
-      );
-      const outcome = decodeGtfsRealtime(response.body, fetchedAt);
-
-      return {
-        ...outcome,
-        warnings: [
-          warning(
-            'vbn_realtime',
-            'JSON_PARSER_FALLBACK',
-            `Fell back to protobuf after JSON failure: ${describeError(jsonError)}`,
-            {
-              occurredAt: fetchedAt,
-              retryable: isRetryableError(jsonError),
-            },
-          ),
-          ...outcome.warnings,
-        ],
-      };
     }
+
+    return this.fetchJson(fetchedAt);
+  }
+
+  private async fetchJson(
+    fetchedAt: string,
+  ): Promise<SourceOutcome<VbnRealtimeRecord[]>> {
+    const response = await this.#client.getText(
+      this.#jsonUrl,
+      JSON_FETCH_POLICY,
+    );
+
+    return parseVbnRealtimeJson(response.body, fetchedAt);
   }
 }
 
@@ -507,13 +511,6 @@ function readOptionalScalar(value: unknown): number | string | undefined {
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function shouldFallbackToProtobuf(error: unknown): boolean {
-  return (
-    error instanceof SourceHttpClientError ||
-    error instanceof VbnRealtimeParseError
-  );
 }
 
 function isRetryableError(error: unknown): boolean {

@@ -15,6 +15,18 @@ export interface Provenance {
   contentHash?: string;
 }
 
+export interface Citation {
+  id: string;
+  source: SourceId;
+  title: string;
+  source_url: string;
+  alternate_urls?: string[];
+  fetched_at?: string;
+  published_at?: string;
+  content_hash?: string;
+  claim_paths: string[];
+}
+
 export interface DelayObservation {
   line_id: string;
   entity_id?: string;
@@ -123,6 +135,7 @@ export interface ToolEnvelope<T> {
   timezone: 'Europe/Berlin';
   status: 'complete' | 'partial';
   data: T;
+  citations: Citation[];
   sources: SourceStatus[];
   warnings: SourceWarning[];
 }

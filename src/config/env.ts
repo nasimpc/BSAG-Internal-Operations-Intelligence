@@ -11,7 +11,7 @@ const envSchema = z.object({
     .int()
     .min(5)
     .max(3600)
-    .default(60),
+    .default(300),
   VBN_REALTIME_JSON_URL: urlSchema.default(
     'http://gtfsr.vbn.de/gtfsr_connect.json',
   ),

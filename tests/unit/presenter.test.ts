@@ -22,6 +22,17 @@ describe('presentToolEnvelope', () => {
           },
         ],
       },
+      citations: [
+        {
+          id: 'cite-1',
+          source: 'vbn_realtime',
+          title: 'VBN GTFS-Realtime',
+          source_url: 'https://feeds.example/vbn.pb',
+          alternate_urls: ['https://feeds.example/vbn.json'],
+          fetched_at: '2026-06-20T05:58:58.000Z',
+          claim_paths: ['/data/line_health/0'],
+        },
+      ],
       sources: [
         {
           source: 'vbn_realtime',
@@ -68,6 +79,10 @@ describe('presentToolEnvelope', () => {
     expect(text).toContain('vbn_realtime');
     expect(text).toContain('62s old');
     expect(text).toContain('vmz_web');
+    expect(text).toContain('Citations');
+    expect(text).toContain('cite-1');
+    expect(text).toContain('source_url: https://feeds.example/vbn.pb');
+    expect(text).toContain('claim_paths: /data/line_health/0');
     expect(text).toContain('Warnings');
     expect(text).toContain('SOURCE_TIMEOUT');
     expect(text).toContain('```json');

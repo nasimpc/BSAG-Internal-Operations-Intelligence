@@ -245,6 +245,7 @@ export function createApplication(
         lineHealthService,
         serviceNoticesService,
         shiftBriefService,
+        sourceUrls: coreConfig.sources,
       });
     },
     readiness: {

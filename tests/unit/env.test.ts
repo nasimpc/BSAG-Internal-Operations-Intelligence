@@ -15,7 +15,7 @@ describe('loadEnv', () => {
         days: 30,
       },
       realtime: {
-        refreshIntervalSeconds: 60,
+        refreshIntervalSeconds: 300,
       },
       sources: {
         vbnRealtimeJsonUrl: 'http://gtfsr.vbn.de/gtfsr_connect.json',

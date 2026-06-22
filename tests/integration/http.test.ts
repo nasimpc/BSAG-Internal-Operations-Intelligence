@@ -227,6 +227,7 @@ describe('http transport', () => {
       expect(result.isError).toBeUndefined();
       expect(result.structuredContent).toMatchObject({
         status: 'complete',
+        citations: [],
         data: {
           channel: 'app',
         },

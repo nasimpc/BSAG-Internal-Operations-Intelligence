@@ -17,10 +17,6 @@ const fixture = readFileSync(
   new URL('../fixtures/vbn-realtime.json', import.meta.url),
   'utf8',
 );
-const malformedFixture = readFileSync(
-  new URL('../fixtures/vbn-realtime-malformed.json', import.meta.url),
-  'utf8',
-);
 const fetchedAt = '2026-06-20T05:05:00Z';
 const silentLogger = pino({ enabled: false });
 const agents: MockAgent[] = [];
@@ -72,6 +68,66 @@ function encodeProtobufFeed(): Uint8Array {
   return gtfsRealtimeBindings.transit_realtime.FeedMessage.encode(
     message,
   ).finish();
+}
+
+function encodeLargeProtobufFeed(): Uint8Array {
+  const message = gtfsRealtimeBindings.transit_realtime.FeedMessage.create({
+    header: {
+      gtfsRealtimeVersion: '2.0',
+      timestamp: Math.floor(Date.parse(fetchedAt) / 1000),
+    },
+    entity: [
+      {
+        id: `protobuf-entity-1-${'x'.repeat(10_500_000)}`,
+        tripUpdate: {
+          trip: {
+            tripId: 'protobuf-trip-1',
+            routeId: '1',
+          },
+          stopTimeUpdate: [
+            {
+              stopSequence: 1,
+              arrival: {
+                delay: 300,
+              },
+            },
+          ],
+        },
+      },
+    ],
+  });
+
+  return gtfsRealtimeBindings.transit_realtime.FeedMessage.encode(
+    message,
+  ).finish();
+}
+
+function buildLargeRealtimeJsonPayload(): string {
+  return JSON.stringify({
+    Header: {
+      Timestamp: Math.floor(Date.parse(fetchedAt) / 1000),
+    },
+    Entity: [
+      {
+        Id: 'json-large-entity-1',
+        TripUpdate: {
+          Trip: {
+            TripId: 'json-large-trip-1',
+            RouteId: '1',
+          },
+          StopTimeUpdate: [
+            {
+              StopSequence: 1,
+              Arrival: {
+                Delay: 180,
+              },
+            },
+          ],
+        },
+        Padding: 'x'.repeat(10_500_000),
+      },
+    ],
+  });
 }
 
 describe('parseVbnRealtimeJson', () => {
@@ -278,18 +334,12 @@ describe('parseVbnRealtimeJson', () => {
     expect(outcome.warnings).toEqual([]);
   });
 
-  it('falls back to protobuf when the JSON payload cannot be parsed', async () => {
+  it('fetches protobuf first when configured and does not request JSON', async () => {
     const agent = createAgent();
     const jsonUrl = new URL('https://feeds.example/vbn.json');
     const protobufUrl = new URL('https://feeds.example/vbn.pb');
     const protobufBytes = encodeProtobufFeed();
 
-    agent
-      .get(jsonUrl.origin)
-      .intercept({ path: jsonUrl.pathname, method: 'GET' })
-      .reply(200, malformedFixture, {
-        headers: { 'content-type': 'application/json; charset=utf-8' },
-      });
     agent
       .get(protobufUrl.origin)
       .intercept({ path: protobufUrl.pathname, method: 'GET' })
@@ -320,11 +370,189 @@ describe('parseVbnRealtimeJson', () => {
         delay_seconds: 300,
       }),
     );
+    expect(outcome.warnings).toEqual([]);
+    expect(agent.getCallHistory()?.calls().map((call) => call.path)).toEqual([
+      protobufUrl.pathname,
+    ]);
+  });
+
+  it('falls back to JSON when protobuf fetch or decode fails', async () => {
+    const agent = createAgent();
+    const jsonUrl = new URL('https://feeds.example/vbn.json');
+    const protobufUrl = new URL('https://feeds.example/vbn.pb');
+
+    agent
+      .get(protobufUrl.origin)
+      .intercept({ path: protobufUrl.pathname, method: 'GET' })
+      .reply(200, Buffer.from('not a protobuf feed'), {
+        headers: { 'content-type': 'application/octet-stream' },
+      });
+    agent
+      .get(jsonUrl.origin)
+      .intercept({ path: jsonUrl.pathname, method: 'GET' })
+      .reply(200, fixture, {
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      });
+
+    const client = new SourceHttpClient({
+      allowedSourceUrls: [jsonUrl.toString(), protobufUrl.toString()],
+      dispatcher: agent,
+      logger: silentLogger,
+      sleeper: () => Promise.resolve(),
+      jitter: () => 0,
+    });
+    const source = new VbnRealtimeSource({
+      client,
+      jsonUrl,
+      protobufUrl,
+      clock: new FixedClock(fetchedAt),
+    });
+
+    const outcome = await source.fetch();
+
+    expect(outcome.data).toContainEqual(
+      expect.objectContaining({
+        route_id: '1',
+        trip_id: 'trip-1',
+        delay_seconds: 420,
+      }),
+    );
     expect(outcome.warnings).toContainEqual(
       expect.objectContaining({
         source: 'vbn_realtime',
-        code: 'JSON_PARSER_FALLBACK',
+        code: 'PROTOBUF_SOURCE_FALLBACK',
+        message: expect.stringContaining(
+          'Fell back to JSON after protobuf failure:',
+        ) as string,
       }),
     );
+    expect(agent.getCallHistory()?.calls().map((call) => call.path)).toEqual([
+      protobufUrl.pathname,
+      jsonUrl.pathname,
+    ]);
+  });
+
+  it('uses JSON only when no protobuf URL is configured', async () => {
+    const agent = createAgent();
+    const jsonUrl = new URL('https://feeds.example/vbn.json');
+
+    agent
+      .get(jsonUrl.origin)
+      .intercept({ path: jsonUrl.pathname, method: 'GET' })
+      .reply(200, fixture, {
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      });
+
+    const client = new SourceHttpClient({
+      allowedSourceUrls: [jsonUrl.toString()],
+      dispatcher: agent,
+      logger: silentLogger,
+      sleeper: () => Promise.resolve(),
+      jitter: () => 0,
+    });
+    const source = new VbnRealtimeSource({
+      client,
+      jsonUrl,
+      clock: new FixedClock(fetchedAt),
+    });
+
+    const outcome = await source.fetch();
+
+    expect(outcome.data).toContainEqual(
+      expect.objectContaining({
+        route_id: '1',
+        trip_id: 'trip-1',
+        delay_seconds: 420,
+      }),
+    );
+    expect(agent.getCallHistory()?.calls().map((call) => call.path)).toEqual([
+      jsonUrl.pathname,
+    ]);
+  });
+
+  it('fetches valid JSON over 10 MB and under 25 MB when JSON is used', async () => {
+    const agent = createAgent();
+    const jsonUrl = new URL('https://feeds.example/vbn.json');
+    const payload = buildLargeRealtimeJsonPayload();
+    const byteLength = Buffer.byteLength(payload);
+
+    expect(byteLength).toBeGreaterThan(10_000_000);
+    expect(byteLength).toBeLessThan(25_000_000);
+
+    agent
+      .get(jsonUrl.origin)
+      .intercept({ path: jsonUrl.pathname, method: 'GET' })
+      .reply(200, payload, {
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'content-length': String(byteLength),
+        },
+      });
+
+    const client = new SourceHttpClient({
+      allowedSourceUrls: [jsonUrl.toString()],
+      dispatcher: agent,
+      logger: silentLogger,
+      sleeper: () => Promise.resolve(),
+      jitter: () => 0,
+    });
+    const source = new VbnRealtimeSource({
+      client,
+      jsonUrl,
+      clock: new FixedClock(fetchedAt),
+    });
+
+    const outcome = await source.fetch();
+
+    expect(outcome.data).toContainEqual(
+      expect.objectContaining({
+        route_id: '1',
+        trip_id: 'json-large-trip-1',
+        delay_seconds: 180,
+      }),
+    );
+    expect(outcome.warnings).toEqual([]);
+  });
+
+  it('fetches valid protobuf over 10 MB and under 25 MB', async () => {
+    const agent = createAgent();
+    const jsonUrl = new URL('https://feeds.example/vbn.json');
+    const protobufUrl = new URL('https://feeds.example/vbn.pb');
+    const protobufBytes = encodeLargeProtobufFeed();
+
+    expect(protobufBytes.byteLength).toBeGreaterThan(10_000_000);
+    expect(protobufBytes.byteLength).toBeLessThan(25_000_000);
+
+    agent
+      .get(protobufUrl.origin)
+      .intercept({ path: protobufUrl.pathname, method: 'GET' })
+      .reply(200, Buffer.from(protobufBytes), {
+        headers: { 'content-type': 'application/octet-stream' },
+      });
+
+    const client = new SourceHttpClient({
+      allowedSourceUrls: [jsonUrl.toString(), protobufUrl.toString()],
+      dispatcher: agent,
+      logger: silentLogger,
+      sleeper: () => Promise.resolve(),
+      jitter: () => 0,
+    });
+    const source = new VbnRealtimeSource({
+      client,
+      jsonUrl,
+      protobufUrl,
+      clock: new FixedClock(fetchedAt),
+    });
+
+    const outcome = await source.fetch();
+
+    expect(outcome.data).toContainEqual(
+      expect.objectContaining({
+        route_id: '1',
+        trip_id: 'protobuf-trip-1',
+        delay_seconds: 300,
+      }),
+    );
+    expect(outcome.warnings).toEqual([]);
   });
 });

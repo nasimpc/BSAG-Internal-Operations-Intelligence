@@ -25,6 +25,18 @@ import {
   type ShiftBriefBuildInput,
 } from '../../src/services/shift-brief.js';
 
+const TEST_SOURCE_URLS = {
+  vbnRealtimeJsonUrl: 'https://feeds.example/vbn.json',
+  vbnRealtimeProtobufUrl: 'https://feeds.example/vbn.pb',
+  vbnNoticesUrl: 'https://vbn.example/notices',
+  bsagNewsUrl: 'https://www.bsag.example/aktuelles',
+  vmzCurrentUrl: 'https://vmz.example/current',
+  vmzPreviewUrl: 'https://vmz.example/preview',
+  vmzOverviewUrl: 'https://vmz.example/overview',
+  vmzRssUrl: 'https://vmz.example/feed.rss',
+  bremenEventsUrl: 'https://events.example/calendar',
+};
+
 interface Harness {
   close(): Promise<void>;
   client: Client;
@@ -303,6 +315,7 @@ async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
     lineHealthService,
     serviceNoticesService,
     shiftBriefService,
+    sourceUrls: TEST_SOURCE_URLS,
   });
   const client = new Client(
     {
@@ -331,6 +344,20 @@ async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
       timezone: 'Europe/Berlin',
       status: 'partial',
       data: externalImpactsOutcome.data,
+      citations: externalImpactsOutcome.data.map((impact, index) => ({
+        id: `cite-${String(index + 1)}`,
+        source: impact.provenance.source,
+        title: impact.title,
+        source_url: impact.provenance.sourceUrl,
+        fetched_at: impact.provenance.fetchedAt,
+        ...(impact.provenance.publishedAt === undefined
+          ? {}
+          : { published_at: impact.provenance.publishedAt }),
+        ...(impact.provenance.contentHash === undefined
+          ? {}
+          : { content_hash: impact.provenance.contentHash }),
+        claim_paths: [`/data/${String(index)}`],
+      })),
       sources: externalImpactsOutcome.sources,
       warnings: externalImpactsOutcome.warnings,
     },
@@ -384,11 +411,23 @@ describe('createOperationsBriefingMcpServer', () => {
       expect(result.isError).toBeUndefined();
       expect(textContent(result)).toContain('Line health');
       expect(textContent(result)).toContain('Source freshness');
+      expect(textContent(result)).toContain('Citations');
       expect(textContent(result)).toContain('```json');
       expect(result.structuredContent).toMatchObject({
         generated_at: '2026-06-20T06:00:00.000Z',
         status: 'complete',
         timezone: 'Europe/Berlin',
+        citations: [
+          {
+            id: 'cite-1',
+            source: 'vbn_realtime',
+            title: 'VBN GTFS-Realtime',
+            source_url: TEST_SOURCE_URLS.vbnRealtimeProtobufUrl,
+            alternate_urls: [TEST_SOURCE_URLS.vbnRealtimeJsonUrl],
+            fetched_at: '2026-06-20T05:59:00.000Z',
+            claim_paths: ['/data/0'],
+          },
+        ],
       });
     } finally {
       await harness.close();
@@ -528,6 +567,19 @@ describe('createOperationsBriefingMcpServer', () => {
             }),
           ],
         },
+        citations: expect.arrayContaining([
+          expect.objectContaining({
+            source: 'bremen_events',
+            title: 'Weserpark summer concert',
+            source_url: 'https://events.example/weserpark-concert',
+            claim_paths: ['/data/major_events/0'],
+          }),
+          expect.objectContaining({
+            source: 'vbn_realtime',
+            source_url: TEST_SOURCE_URLS.vbnRealtimeProtobufUrl,
+            claim_paths: ['/data'],
+          }),
+        ]),
       });
       expect(JSON.stringify(result.structuredContent)).not.toContain(
         'corridor_matches',

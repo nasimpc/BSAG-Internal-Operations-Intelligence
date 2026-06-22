@@ -1,4 +1,5 @@
 import type {
+  Citation,
   SourceId,
   SourceStatus,
   SourceWarning,
@@ -9,6 +10,7 @@ export interface SourceOutcome<T> {
   data: T;
   sources: SourceStatus[];
   warnings: SourceWarning[];
+  citations?: Citation[];
 }
 
 export interface CombinedOutcome<T> extends SourceOutcome<T> {
@@ -24,6 +26,7 @@ export function envelope<T>(
     timezone: 'Europe/Berlin',
     status: outcome.warnings.length === 0 ? 'complete' : 'partial',
     data: outcome.data,
+    citations: outcome.citations ?? [],
     sources: outcome.sources,
     warnings: outcome.warnings,
   };
@@ -32,6 +35,7 @@ export function envelope<T>(
 export function combineOutcomes<T>(
   outcomes: SourceOutcome<T[]>[],
 ): CombinedOutcome<T[]> {
+  const citations = outcomes.flatMap((outcome) => outcome.citations ?? []);
   const combined = {
     data: outcomes.flatMap((outcome) => outcome.data),
     sources: outcomes.flatMap((outcome) => outcome.sources),
@@ -40,6 +44,7 @@ export function combineOutcomes<T>(
 
   return {
     ...combined,
+    ...(citations.length === 0 ? {} : { citations }),
     status: combined.warnings.length === 0 ? 'complete' : 'partial',
   };
 }

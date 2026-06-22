@@ -15,6 +15,35 @@ describe('result helpers', () => {
       timezone: 'Europe/Berlin',
       status: 'complete',
       data: [1],
+      citations: [],
+    });
+  });
+
+  it('preserves explicit envelope citations', () => {
+    expect(
+      envelope('2026-06-20T08:00:00.000Z', {
+        data: [1],
+        citations: [
+          {
+            id: 'cite-1',
+            source: 'vbn_realtime',
+            title: 'VBN GTFS-Realtime',
+            source_url: 'https://feeds.example/vbn.pb',
+            claim_paths: ['/data/0'],
+          },
+        ],
+        sources: [],
+        warnings: [],
+      }),
+    ).toMatchObject({
+      citations: [
+        {
+          id: 'cite-1',
+          source: 'vbn_realtime',
+          source_url: 'https://feeds.example/vbn.pb',
+          claim_paths: ['/data/0'],
+        },
+      ],
     });
   });
 

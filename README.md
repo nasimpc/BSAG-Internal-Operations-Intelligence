@@ -78,7 +78,7 @@ Key runtime variables:
 - `HTTP_BEARER_TOKEN`: required when `HTTP_HOST` is not loopback
 - `HTTP_ALLOWED_ORIGINS`: comma-separated allowed exact origins or hostnames
 - `RETENTION_DAYS`: SQLite retention for realtime snapshots, default `30`
-- `REALTIME_REFRESH_INTERVAL_SECONDS`: GTFS-Realtime reuse window, default `60`
+- `REALTIME_REFRESH_INTERVAL_SECONDS`: GTFS-Realtime reuse window, default `300`
 
 The server does not auto-load `.env`; use Node's `--env-file` flag or export variables in the shell.
 
