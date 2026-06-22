@@ -44,7 +44,8 @@ const DEFAULT_LINE_ROUTE_MAP_PATH = fileURLToPath(
 );
 
 const runtimeEnvSchema = z.object({
-  HTTP_PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  HTTP_PORT: z.coerce.number().int().min(1).max(65_535).optional(),
+  PORT: z.coerce.number().int().min(1).max(65_535).optional(),
   HTTP_BEARER_TOKEN: z.string().trim().min(1).optional(),
   HTTP_ALLOWED_ORIGINS: z.string().optional(),
   DATA_PATH: z.string().trim().min(1).optional(),
@@ -273,7 +274,7 @@ function loadRuntimeEnv(
   const parsed = runtimeEnvSchema.parse(input);
 
   return {
-    httpPort: parsed.HTTP_PORT,
+    httpPort: parsed.HTTP_PORT ?? parsed.PORT ?? 3000,
     ...(parsed.HTTP_BEARER_TOKEN === undefined
       ? {}
       : { httpBearerToken: parsed.HTTP_BEARER_TOKEN }),

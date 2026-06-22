@@ -28,10 +28,11 @@ COPY --from=build /app/.env.example ./.env.example
 
 ENV NODE_ENV=production
 ENV TZ=Europe/Berlin
+ENV HTTP_HOST=0.0.0.0
 ENV BSAG_MCP_DATA_DIR=/data
 
 VOLUME ["/data"]
 
 USER app
 
-CMD ["node", "dist/transports/stdio.js"]
+CMD ["node", "dist/transports/http.js"]

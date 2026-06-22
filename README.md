@@ -75,6 +75,7 @@ Key runtime variables:
 - `LINE_ROUTE_MAP_PATH`: public line label to GTFS route ID mapping JSON, default packaged `config/line-route-map.json`
 - `HTTP_HOST`: bind host for HTTP mode, default `127.0.0.1`
 - `HTTP_PORT`: bind port for HTTP mode, default `3000`
+- `PORT`: fallback bind port when `HTTP_PORT` is unset; used by Cloud Run
 - `HTTP_BEARER_TOKEN`: required when `HTTP_HOST` is not loopback
 - `HTTP_ALLOWED_ORIGINS`: comma-separated allowed exact origins or hostnames
 - `RETENTION_DAYS`: SQLite retention for realtime snapshots, default `30`

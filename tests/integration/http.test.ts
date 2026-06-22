@@ -135,6 +135,28 @@ describe('http transport', () => {
     ).toThrow(/bearer/i);
   });
 
+  it('uses Cloud Run PORT when HTTP_PORT is not configured', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'bsag-http-port-'));
+    const dataPath = join(directory, 'storage.sqlite');
+    const application = createApplication({
+      dataPath,
+      env: {
+        PORT: '8080',
+        HTTP_HOST: '127.0.0.1',
+        DATA_PATH: dataPath,
+        BSAG_MCP_DATA_DIR: directory,
+      },
+      logger: createLogger({ level: 'silent' }),
+    });
+
+    try {
+      expect(application.config.http.port).toBe(8080);
+    } finally {
+      await application.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('handles initialize and draft tool calls and enforces bearer outcomes', async () => {
     const fixtureServer = await startFixtureServer();
     const directory = mkdtempSync(join(tmpdir(), 'bsag-http-mcp-'));

@@ -55,13 +55,19 @@ docker build -t bsag-briefing-mcp:test .
 Run stdio:
 
 ```bash
-docker run --rm -i -v "$(pwd)/data:/data" bsag-briefing-mcp:test
+docker run --rm -i -v "$(pwd)/data:/data" bsag-briefing-mcp:test node dist/transports/stdio.js
 ```
 
-Run HTTP:
+Run HTTP. The image defaults to Streamable HTTP, binds to `0.0.0.0`, and uses `HTTP_PORT`, `PORT`, or `3000` in that order:
 
 ```bash
-docker run --rm -p 3000:3000 -e HTTP_HOST=0.0.0.0 -e HTTP_PORT=3000 -e HTTP_BEARER_TOKEN=change-me -v "$(pwd)/data:/data" bsag-briefing-mcp:test node dist/transports/http.js
+docker run --rm -p 3000:3000 -e HTTP_PORT=3000 -e HTTP_BEARER_TOKEN=change-me -v "$(pwd)/data:/data" bsag-briefing-mcp:test
+```
+
+Cloud Run:
+
+```bash
+gcloud run deploy bsag-briefing-mcp --source . --set-env-vars HTTP_BEARER_TOKEN=change-me
 ```
 
 ## CI
